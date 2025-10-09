@@ -32,7 +32,7 @@ gui_workflow_tests = [
       {
         type     = "input",
         selector = "[name='password']",
-        text     = "arena-3030"
+        text     = ""
       },
       {
         type     = "click",
