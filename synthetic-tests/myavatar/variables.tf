@@ -20,7 +20,28 @@ variable "assume_role_arn" {
   default     = ""
 }
 
-variable "tests" {
-  type        = list(any)
-  description = "Configuration for synthetic tests"
+variable "hearthbeat_tests" {
+  type = list(object({
+    name     = string
+    runtime  = string
+    urls     = list(string)
+    schedule = string
+  }))
+  description = "Configuration for Hearthbeat synthetic tests"
+}
+
+variable "gui_workflow_tests" {
+  type = list(object({
+    name    = string
+    runtime = string
+    url     = string
+    actions = list(object({
+      type     = string
+      selector = string
+      text     = optional(string)
+    }))
+    schedule         = string
+    custom_code_path = optional(string)
+  }))
+  description = "Configuration for GUI Workflow synthetic tests"
 }
