@@ -12,7 +12,7 @@ terraform {
 }
 
 module "heartbeats_tests" {
-  source = "git@github.com:stationfy/terraform-arena-modules//aws/synthetic-tests/hearthbeat?ref=v0.0.46"
+  source = "git@github.com:stationfy/terraform-arena-modules//aws/synthetic-tests/hearthbeat?ref=v0.0.48"
   name   = var.name
   tests  = var.hearthbeat_tests
   env    = var.env
@@ -20,7 +20,7 @@ module "heartbeats_tests" {
 }
 
 module "gui_workflow_tests" {
-  source = "git@github.com:stationfy/terraform-arena-modules//aws/synthetic-tests/gui_workflow?ref=v0.0.46"
+  source = "git@github.com:stationfy/terraform-arena-modules//aws/synthetic-tests/gui_workflow?ref=v0.0.48"
   name   = var.name
   tests  = var.gui_workflow_tests
   env    = var.env
