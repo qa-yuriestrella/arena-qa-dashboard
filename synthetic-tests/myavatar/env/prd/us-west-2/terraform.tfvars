@@ -42,7 +42,7 @@ gui_workflow_tests = [
         selector = "[type='submit']"
       }
     ]
-    schedule = "cron(0 12 * * ? *)",
+    schedule = "cron(0 11 * * ? *)",
     alarm = {
       evaluation_periods = 1
       period             = 86400
@@ -65,7 +65,7 @@ gui_workflow_tests = [
         text     = "Boom! Here's an Avatar preview"
       },
     ]
-    schedule = "cron(0 12 * * ? *)",
+    schedule = "cron(0 11 * * ? *)",
     alarm = {
       evaluation_periods = 1
       period             = 86400
@@ -98,7 +98,7 @@ gui_workflow_tests = [
       }
     ],
     custom_code_path = "./kb-page-load.js",
-    schedule         = "cron(0 12 * * ? *)",
+    schedule         = "cron(0 11 * * ? *)",
     alarm = {
       evaluation_periods = 1
       period             = 86400
@@ -113,7 +113,7 @@ gui_workflow_tests = [
     actions = [
     ],
     custom_code_path = "./voice-call.js",
-    schedule         = "cron(0 12 * * ? *)",
+    schedule         = "cron(0 11 * * ? *)",
     alarm = {
       evaluation_periods = 1
       period             = 86400
