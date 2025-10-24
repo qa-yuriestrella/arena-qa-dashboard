@@ -7,7 +7,13 @@ hearthbeat_tests = [
     name     = "my-avatar-hearthbeat",
     runtime  = "playwright-3.0",
     urls     = ["https://myavatar.ai"],
-    schedule = "rate(5 minutes)"
+    schedule = "rate(5 minutes)",
+    alarm = {
+      evaluation_periods = 2
+      period             = 300
+      threshold          = 99
+      missing_data       = "breaching"
+    }
   },
 ]
 
@@ -37,6 +43,12 @@ gui_workflow_tests = [
       }
     ]
     schedule = "cron(0 12 * * ? *)",
+    alarm = {
+      evaluation_periods = 1
+      period             = 86400
+      threshold          = 99
+      missing_data       = "breaching"
+    }
   },
   {
     name    = "myavatar-onboarding-create",
@@ -54,6 +66,12 @@ gui_workflow_tests = [
       },
     ]
     schedule = "cron(0 12 * * ? *)",
+    alarm = {
+      evaluation_periods = 1
+      period             = 86400
+      threshold          = 99
+      missing_data       = "breaching"
+    }
   },
   {
     name    = "myavatar-knowledge-base-page-load",
@@ -81,6 +99,12 @@ gui_workflow_tests = [
     ],
     custom_code_path = "./kb-page-load.js",
     schedule         = "cron(0 12 * * ? *)",
+    alarm = {
+      evaluation_periods = 1
+      period             = 86400
+      threshold          = 99
+      missing_data       = "breaching"
+    }
   },
   {
     name    = "myavatar-voice-call",
@@ -90,5 +114,11 @@ gui_workflow_tests = [
     ],
     custom_code_path = "./voice-call.js",
     schedule         = "cron(0 12 * * ? *)",
+    alarm = {
+      evaluation_periods = 1
+      period             = 86400
+      threshold          = 99
+      missing_data       = "breaching"
+    }
   },
 ]

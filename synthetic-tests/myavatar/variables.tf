@@ -26,6 +26,12 @@ variable "hearthbeat_tests" {
     runtime  = string
     urls     = list(string)
     schedule = string
+    alarm = optional(object({
+      threshold          = number
+      period             = number
+      evaluation_periods = number
+      missing_data       = string
+    }))
   }))
   description = "Configuration for Hearthbeat synthetic tests"
 }
@@ -42,6 +48,12 @@ variable "gui_workflow_tests" {
     }))
     schedule         = string
     custom_code_path = optional(string)
+    alarm = optional(object({
+      threshold          = number
+      period             = number
+      evaluation_periods = number
+      missing_data       = string
+    }))
   }))
   description = "Configuration for GUI Workflow synthetic tests"
 }
