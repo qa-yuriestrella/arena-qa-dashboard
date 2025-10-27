@@ -107,6 +107,19 @@ gui_workflow_tests = [
     }
   },
   {
+    name    = "myavatar-onboarding-create-signup",
+    runtime = "playwright-3.0",
+    url     = "https://myavatar.ai/onboarding/login",
+    custom_code_path = "./kb-page-load.js",
+    schedule         = "cron(0 11 * * ? *)",
+    alarm = {
+      evaluation_periods = 1
+      period             = 86400
+      threshold          = 99
+      missing_data       = "breaching"
+    }
+  },
+  {
     name    = "myavatar-voice-call",
     runtime = "playwright-3.0",
     url     = "https://myavatar.ai/ronaldo",
