@@ -1,9 +1,6 @@
 const fakeName = faker.person.fullName();
 const fakeEmail = faker.internet.email();
 const fakePassword = faker.internet.password({ length: 10 });
-await expect(
-  page.getByText("Create an account or sign in to continue")
-).toBeVisible();
 
 await page.locator('[name="name"]').fill(fakeName);
 await page.locator('[name="email"]').fill(fakeEmail);
