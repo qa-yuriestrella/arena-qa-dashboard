@@ -24,6 +24,10 @@ gui_workflow_tests = [
     url     = "https://myavatar.ai/",
     actions = [
       {
+        type     = "click",
+        selector = "#menu-item-867 a"
+      },
+      {
         type     = "input",
         selector = "[name='email']",
         text     = "Synthetics@test.com"
@@ -61,7 +65,7 @@ gui_workflow_tests = [
       },
       {
         type     = "verifyText",
-        selector = "menu-item-867 a",
+        selector = ".text-2xl",
         text     = "Boom! Here's an Avatar preview"
       },
     ]
@@ -76,7 +80,7 @@ gui_workflow_tests = [
   {
     name    = "myavatar-knowledge-base-page-load",
     runtime = "playwright-3.0",
-    url     = "https://myavatar.ai/onboarding/login",
+    url     = "https://app.myavatar.ai/onboarding/login",
     actions = [
       {
         type     = "input",
@@ -126,7 +130,7 @@ gui_workflow_tests = [
       missing_data       = "breaching"
     }
   },
-   {
+  {
     name    = "myavatar-onboarding-checkout",
     runtime = "playwright-3.0",
     url     = "https://arena-develop-avatar-onboarding.vercel.app/onboarding",
