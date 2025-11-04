@@ -42,8 +42,8 @@ gui_workflow_tests = [
         selector = "[type='submit']",
       },
       {
-        type     = "redirection",
-        selector = "[type='submit']"
+        type     = "verifySelector",
+        selector = "img[alt='Arena logo']"
       }
     ]
     schedule = "cron(0 11 * * ? *)",
