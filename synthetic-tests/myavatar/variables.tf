@@ -42,9 +42,10 @@ variable "gui_workflow_tests" {
     runtime = string
     url     = string
     actions = list(object({
-      type     = string
-      selector = string
-      text     = optional(string)
+      type       = string
+      selector   = string
+      text       = optional(string)
+      secret_key = optional(string)
     }))
     schedule         = string
     custom_code_path = optional(string)
@@ -56,4 +57,9 @@ variable "gui_workflow_tests" {
     }))
   }))
   description = "Configuration for GUI Workflow synthetic tests"
+}
+
+variable "secret_id" {
+  description = "AWS Secrets Manager ID from which to get values for actions"
+  type        = string
 }

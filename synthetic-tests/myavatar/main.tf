@@ -14,7 +14,7 @@ terraform {
 module "heartbeats_tests" {
   source = "git@github.com:stationfy/terraform-arena-modules//aws/synthetic-tests/hearthbeat?ref=v0.0.50"
   name   = var.name
-  tests  = var.hearthbeat_tests
+  tests  = local.hearthbeat_tests
   env    = var.env
   region = var.region
 }
@@ -22,7 +22,7 @@ module "heartbeats_tests" {
 module "gui_workflow_tests" {
   source = "git@github.com:stationfy/terraform-arena-modules//aws/synthetic-tests/gui_workflow?ref=v0.0.50"
   name   = var.name
-  tests  = var.gui_workflow_tests
+  tests  = local.gui_workflow_tests
   env    = var.env
   region = var.region
 }
