@@ -98,12 +98,12 @@ gui_workflow_tests = [
     actions = [
       {
         type     = "click",
-        selector = "#menu-item-867 a",
+        selector = "[class*='menu-item menu-item-362'] a",
       },
       {
         type     = "verifyText",
-        selector = ".text-2xl",
-        text     = "Boom! Here's an Avatar preview"
+        selector = "[class*="text-center leading-5"]",
+        text     = "Create an account or sign in to continue"
       },
     ]
     schedule = "cron(0 11 * * ? *)",
