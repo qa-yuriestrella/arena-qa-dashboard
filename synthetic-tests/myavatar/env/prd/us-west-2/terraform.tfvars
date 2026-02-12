@@ -17,6 +17,43 @@ hearthbeat_tests = [
   },
 ]
 
+hearthbeat_salomao_tests = [
+  {
+    name     = "salomao-api-healthcheck"
+    runtime  = "http"
+    urls     = ["https://salomao.myavatar.ai/api/v1/healthcheck"]
+    schedule = "rate(5 minutes)"
+
+    request = {
+      method = "GET"
+      headers = {
+        "Accept"     = "application/json"
+        "User-Agent" = "kulala.nvim/5.3.3"
+      }
+    }
+
+    assertions = [
+      {
+        type     = "statusCode"
+        operator = "is"
+        target   = 200
+      },
+      {
+        type     = "body"
+        operator = "contains"
+        target   = "\"salomaoApi\":\"ok\""
+      }
+    ]
+
+    alarm = {
+      evaluation_periods = 2
+      period             = 300
+      threshold          = 99
+      missing_data       = "breaching"
+    }
+  }
+]
+
 gui_workflow_tests = [
   {
     name    = "myavatar-onboarding-login",
@@ -61,12 +98,12 @@ gui_workflow_tests = [
     actions = [
       {
         type     = "click",
-        selector = "#menu-item-867 a",
+        selector = "[class*='menu-item menu-item-362'] a",
       },
       {
         type     = "verifyText",
-        selector = ".text-2xl",
-        text     = "Boom! Here's an Avatar preview"
+        selector = "[class*="text-center leading-5"]",
+        text     = "Create an account or sign in to continue"
       },
     ]
     schedule = "cron(0 11 * * ? *)",
