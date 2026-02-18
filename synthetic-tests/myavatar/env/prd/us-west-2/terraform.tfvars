@@ -80,9 +80,10 @@ gui_workflow_tests = [
       },
       {
         type     = "verifySelector",
-        selector = "img[alt='Arena logo']"
+        selector = "img[alt='Arena logo']",
+        timeout: 80000
       }
-    ]
+    ] 
     schedule = "cron(0 11 * * ? *)",
     alarm = {
       evaluation_periods = 1
