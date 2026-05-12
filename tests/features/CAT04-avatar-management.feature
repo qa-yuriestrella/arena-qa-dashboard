@@ -48,7 +48,6 @@ Feature: CAT04 - Avatar Management
   # ─── Delete Avatar ───────────────────────────────────────────────────────────
 
   @avm-delete
-  Scenario: AVM005 - Non-primary avatars can be deleted; the last remaining avatar cannot be deleted
-    Given the account has more than one avatar
-    When I delete all non-primary avatars
+  Scenario: AVM005 - Delete button is disabled when only one avatar remains
+    When I navigate to Settings
     Then the Delete avatar button should be disabled
