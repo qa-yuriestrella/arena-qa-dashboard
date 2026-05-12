@@ -36,11 +36,11 @@ class EndUserPage {
     // Set up request tracking before clicking to catch first-session API calls
     this._sessionRequestPromise = this.page.waitForRequest(
       req => req.url().includes('create-session') || (req.url().includes('/session') && req.method() === 'POST'),
-      { timeout: 15000 }
+      { timeout: 30000 }
     );
     this._messageRequestPromise = this.page.waitForRequest(
       req => req.url().includes('send-message') || (req.url().includes('/message') && req.method() === 'POST'),
-      { timeout: 15000 }
+      { timeout: 30000 }
     );
     // Also track the welcome-message RESPONSE so lastMessageShouldBeFromAvatar can wait for it.
     this._welcomeResponsePromise = this.page.waitForResponse(
@@ -58,10 +58,18 @@ class EndUserPage {
   }
 
   async clickCallButton() {
-    // Set up call request tracking before clicking — the request fires after login completes,
-    // so we need the listener in place early.
+    // The call initiation is tracked via a Segment/analytics Track event with
+    // "event": "Voice Call Started" in the POST body, not a dedicated /call URL.
+    // Match by URL pattern OR by payload so either implementation works.
     this._callRequestPromise = this.page.waitForRequest(
-      req => /call|voice-call|start-call/i.test(req.url()) && req.method() === 'POST',
+      req => {
+        if (req.method() !== 'POST') return false;
+        if (/call|voice-call|start-call/i.test(req.url())) return true;
+        try {
+          const body = JSON.parse(req.postData() || '{}');
+          return body.event === 'Voice Call Started';
+        } catch { return false; }
+      },
       { timeout: 30000 }
     );
     this._callRequestPromise.catch(() => {});

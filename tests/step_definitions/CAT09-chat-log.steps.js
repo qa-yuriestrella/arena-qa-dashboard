@@ -131,8 +131,16 @@ Then('the logged-in user\'s name should be visible in the conversation', async (
   await chatLogPage.loggedInUserNameShouldBeVisible();
 });
 
-When('I send a message as anonymous then sign up from the end user page', async ({ chatLogPage, browser }) => {
-  await chatLogPage.sendAnonymousMessageThenSignup(browser);
+When('I send a message as anonymous from the end user page', async ({ chatLogPage, browser }) => {
+  await chatLogPage.sendAnonymousMessageFromEU(browser);
+});
+
+Then('the first conversation should show as {string}', async ({ chatLogPage }, name) => {
+  await chatLogPage.firstConversationShouldShowAnonymous(name);
+});
+
+When('I sign up and send a follow-up message from the end user page', async ({ chatLogPage }) => {
+  await chatLogPage.signUpAndSendFollowUpInEU();
 });
 
 Then('the signed-up user\'s name should be visible in the conversation', async ({ chatLogPage }) => {

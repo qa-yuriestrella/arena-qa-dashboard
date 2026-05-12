@@ -33,10 +33,19 @@ Feature: CAT13 - Profile Builder – Social Links Tab
   # to the full URL on save.
 
   @pbs-normalise
-  Scenario: PBS005 - Entering a profile handle normalises to the full URL after saving
-    When I fill the social link for "Instagram" with "e2e_test_handle"
+  Scenario Outline: PBS005 - Entering a handle for <network> normalises to the full URL after saving
+    When I fill the social link for "<network>" with "e2e_test_handle"
     And I save the social links
-    Then the "Instagram" field should contain the full URL with "e2e_test_handle"
+    Then the "<network>" field should contain the full URL with "e2e_test_handle"
+
+    Examples:
+      | network   |
+      | Instagram |
+      | X         |
+      | Youtube   |
+      | TikTok    |
+      | Facebook  |
+      | LinkedIn  |
 
   # ─── Cancel behaviour ─────────────────────────────────────────────────────────
 

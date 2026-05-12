@@ -1,4 +1,5 @@
 const { expect } = require('@playwright/test');
+const { ensurePrimaryAvatar } = require('../helpers/avatarHelper');
 
 const EU_URL = process.env.EU_URL || 'https://dev-avatar.arena.im/arena-automation';
 
@@ -6,9 +7,12 @@ class ChatLogPage {
   constructor(page) {
     this.page = page;
     this._prevConversationCount = 0;
+    this._persistentEuContext = null;
+    this._persistentEuPage = null;
   }
 
   async visit() {
+    await ensurePrimaryAvatar(this.page);
     await this.page.goto('/chat-log');
     await this.page.waitForLoadState('load');
 
@@ -262,7 +266,7 @@ class ChatLogPage {
       // recency label. Click it as soon as it appears so downstream assertions
       // can validate the already-open detail panel without an extra click.
       const recentCard = this._conversationCards().filter({
-        hasText: /A few seconds ago|A minute ago/,
+        hasText: /(seconds|minutes?) ago|just now/i,
       });
       if (await recentCard.count() > 0) {
         // Set up the detail-load listener before clicking so we never miss it.
@@ -418,16 +422,22 @@ class ChatLogPage {
 
   // ─── CL010: anonymous → signup, name updates ─────────────────────────────────
 
-  async sendAnonymousMessageThenSignup(browser) {
+  async sendAnonymousMessageFromEU(browser) {
     const displayName = `ChatBot${Date.now()}`;
     this._signedUpUserName = displayName;
-    const context = await browser.newContext();
-    const page = await context.newPage();
-    try {
-      const input = await this._openEuChatAndWaitForWelcome(page);
-      await this._sendEuMessage(page, input, 'Chat log test: anonymous to named user');
-      await page.waitForTimeout(1000);
+    // Keep the context open so the same browser session is reused for signup
+    this._persistentEuContext = await browser.newContext();
+    this._persistentEuPage = await this._persistentEuContext.newPage();
 
+    const input = await this._openEuChatAndWaitForWelcome(this._persistentEuPage);
+    await this._sendEuMessage(this._persistentEuPage, input, 'Chat log test: anonymous to named user');
+    await this._persistentEuPage.waitForTimeout(1000);
+  }
+
+  async signUpAndSendFollowUpInEU() {
+    const page = this._persistentEuPage;
+    const displayName = this._signedUpUserName;
+    try {
       // Log in within the same session so the anonymous user gets merged
       await page.getByRole('button', { name: /^login$/i }).last().click();
       const frame = page.frameLocator('iframe').first();
@@ -451,13 +461,19 @@ class ChatLogPage {
 
       await expect(frame.getByRole('dialog')).not.toBeVisible({ timeout: 20000 });
 
-      // The display name only propagates to the chat log after the now-logged-in
-      // user sends at least one message. Re-locate the input and send one more.
+      // The display name only propagates after the now-logged-in user sends a message.
+      // Click the send button explicitly — pressing Enter on a textarea adds a newline.
       const loggedInInput = page.locator(this._euInputSelector()).first();
       await loggedInInput.waitFor({ state: 'visible', timeout: 10000 });
-      await this._sendEuMessage(page, loggedInInput, 'Post-signup message to update display name');
+      await loggedInInput.fill('Post-signup message to update display name');
+      const sendBtn = page.locator('button[aria-label="Send message"]');
+      await sendBtn.waitFor({ state: 'visible', timeout: 5000 });
+      await sendBtn.click();
+      await page.waitForTimeout(1500);
     } finally {
-      await context.close();
+      await this._persistentEuContext.close();
+      this._persistentEuContext = null;
+      this._persistentEuPage = null;
     }
   }
 
@@ -509,7 +525,7 @@ class ChatLogPage {
       await this.page.waitForTimeout(500);
 
       const recentCard = this._conversationCards().filter({
-        hasText: /A few seconds ago|A minute ago/,
+        hasText: /(seconds|minutes?) ago|just now/i,
       });
       if (await recentCard.count() === 0) continue;
 

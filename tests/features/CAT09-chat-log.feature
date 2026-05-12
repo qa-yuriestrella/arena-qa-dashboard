@@ -81,9 +81,11 @@ Feature: CAT09 - Chat Log
   @cl-integration
   Scenario: CL010 - An anonymous user who signs up after messaging has their name updated in the chat log
     Given I note the current conversation count
-    When I send a message as anonymous then sign up from the end user page
+    When I send a message as anonymous from the end user page
     Then a new conversation should appear in the chat log
-    And the signed-up user's name should be visible in the conversation
+    And the first conversation should show as "Anonymous"
+    When I sign up and send a follow-up message from the end user page
+    Then the signed-up user's name should be visible in the conversation
 
   @cl-integration
   Scenario: CL011 - Opening the chat without sending a message does not create a chat log entry

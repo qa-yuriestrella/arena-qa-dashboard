@@ -1,4 +1,5 @@
 const { expect } = require('@playwright/test');
+const { ensurePrimaryAvatar } = require('../helpers/avatarHelper');
 
 class AudiencePage {
   constructor(page) {
@@ -8,6 +9,7 @@ class AudiencePage {
   }
 
   async visit() {
+    await ensurePrimaryAvatar(this.page);
     await this.page.goto('/audience');
     await this.page.waitForLoadState('load');
 
@@ -155,12 +157,33 @@ class AudiencePage {
       .getByRole('checkbox');
   }
 
+  async _dismissHealthPopperIfOpen() {
+    const healthBtn = this.page.getByRole('button', { name: /avatar health/i });
+    if (await healthBtn.count() > 0 && (await healthBtn.getAttribute('aria-expanded')) === 'true') {
+      await healthBtn.click();
+      await this.page.waitForTimeout(300);
+      return true;
+    }
+    return false;
+  }
+
+  async _ensureColumnsDropdownOpen() {
+    const firstCb = this._dropdownCheckboxes().first();
+    const visible = await firstCb.isVisible({ timeout: 800 }).catch(() => false);
+    if (!visible) {
+      await this._openColumnsDropdown();
+      await this._dropdownCheckboxes().first().waitFor({ state: 'visible', timeout: 5000 });
+    }
+  }
+
   async enableAllHiddenColumns() {
     await this._openColumnsDropdown();
     const checkboxes = this._dropdownCheckboxes();
     await checkboxes.first().waitFor({ state: 'visible', timeout: 5000 });
     const count = await checkboxes.count();
     for (let i = 0; i < count; i++) {
+      const healthDismissed = await this._dismissHealthPopperIfOpen();
+      if (healthDismissed) await this._ensureColumnsDropdownOpen();
       const cb = checkboxes.nth(i);
       if (!(await cb.isChecked())) {
         await cb.click();
@@ -185,6 +208,8 @@ class AudiencePage {
     await checkboxes.first().waitFor({ state: 'visible', timeout: 5000 });
     const count = await checkboxes.count();
     for (let i = 0; i < count; i++) {
+      const healthDismissed = await this._dismissHealthPopperIfOpen();
+      if (healthDismissed) await this._ensureColumnsDropdownOpen();
       const cb = checkboxes.nth(i);
       if (await cb.isChecked()) {
         await cb.click();

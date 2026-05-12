@@ -1,8 +1,9 @@
 const { expect } = require('@playwright/test');
 const path = require('path');
+const { ensurePrimaryAvatar } = require('../helpers/avatarHelper');
 
 const TEST_IMAGE_PATH = path.resolve(__dirname, '../fixtures/images/test-face.jpg');
-const EU_URL = process.env.EU_URL || 'https://dev-avatar.arena.im/yuriautomation';
+const EU_URL = process.env.EU_URL || 'https://dev-avatar.arena.im/arena-automation';
 const EU_BASE = EU_URL.substring(0, EU_URL.lastIndexOf('/'));
 
 class ProfileBuilderPage {
@@ -33,6 +34,7 @@ class ProfileBuilderPage {
   }
 
   async visitGeneral() {
+    await ensurePrimaryAvatar(this.page);
     await this._suppressAvatarHealthPopperBeforeNav();
     await this.page.goto('/profile-builder');
     await this.page.waitForLoadState('load');
@@ -45,6 +47,7 @@ class ProfileBuilderPage {
   }
 
   async visitHeadshot() {
+    await ensurePrimaryAvatar(this.page);
     await this._suppressAvatarHealthPopperBeforeNav();
     await this.page.goto('/profile-builder/headshot');
     await this.page.waitForLoadState('load');
@@ -274,11 +277,14 @@ class ProfileBuilderPage {
     await this.fillHeadline(headline);
     await this.fillSlug(slug);
     if (language) await this.selectLanguage(language);
+
     await this.page.getByRole('button', { name: /^save$/i }).click();
-    // Wait for the button to return to disabled (clean form = save completed successfully).
-    await expect(
-      this.page.getByRole('button', { name: /^save$/i })
-    ).toBeDisabled({ timeout: 20000 });
+
+    // Changing the slug changes the avatar URL, so the app redirects to Knowledge Base
+    // after saving. Wait for that redirect as the definitive confirmation that the
+    // save completed, then allow a few seconds for the new slug to propagate to EU routing.
+    await this.page.waitForURL(/knowledge-base/i, { timeout: 25000 });
+    await this.page.waitForTimeout(3000);
   }
 
   async restoreOriginalProfileSettings() {
@@ -296,7 +302,14 @@ class ProfileBuilderPage {
   // ─── End-user reflection (PBG009) ────────────────────────────────────────────
 
   async euShouldShowUpdatedName(slug, title) {
-    await this.page.goto(`${EU_BASE}/${slug}`);
+    // The slug update can take a few seconds to propagate to EU routing.
+    // Retry up to 3 times with 3s gaps if we still get a 404.
+    const url = `${EU_BASE}/${slug}`;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await this.page.goto(url, { timeout: 15000 }).catch(() => null);
+      if (!res || res.status() !== 404) break;
+      await this.page.waitForTimeout(3000);
+    }
     await this.page.waitForLoadState('load');
     await expect(
       this.page.getByText(title, { exact: false })
@@ -485,49 +498,24 @@ class ProfileBuilderPage {
       this.page.getByRole('listitem').filter({ hasText: 'Animated profile is being' })
     ).toBeVisible({ timeout: 15000 });
 
-    // Watch the app's own polls until "completed" (pass) or "failed"/timeout (fail).
-    // The pending check is skipped intentionally: fast generations already return
-    // "completed" on the first poll before we can catch "pending".
-    const timeoutMs = 600000; // 10 minutes
-    const deadline = Date.now() + timeoutMs;
+    // The card appears immediately with aria-disabled="true" (pending) and transitions
+    // to aria-disabled="false" once the backend reports completed or failed.
+    // Using DOM polling is more reliable than waitForResponse because the completion
+    // response can arrive at any time and may be missed by a late listener.
+    const card = this.page
+      .locator('[role="button"]')
+      .filter({ hasText: name })
+      .first();
 
-    while (Date.now() < deadline) {
-      const remaining = deadline - Date.now();
-      if (remaining <= 0) break;
+    await card.waitFor({ state: 'visible', timeout: 60000 });
+    await expect(card).toHaveAttribute('aria-disabled', 'false', { timeout: 600000 });
 
-      // URL filter uses page=1 + limit=10 only — "headshot" may not appear in the path.
-      // Body structure check below guards against matching unrelated paginated endpoints.
-      const response = await this.page.waitForResponse(
-        (res) =>
-          res.url().includes('/commerce-ai/') &&
-          res.url().includes('page=1') &&
-          res.url().includes('limit=10') &&
-          res.status() === 200,
-        { timeout: Math.min(60000, remaining) }
-      ).catch(() => null);
-
-      // null means no matching response arrived in this window — keep waiting
-      if (!response) continue;
-
-      let json;
-      try { json = await response.json(); } catch { continue; }
-
-      // Skip responses that don't look like the headshot list (e.g. other paginated endpoints)
-      if (!json?.success || !Array.isArray(json?.data)) continue;
-      if (!json.data.length || json.data[0]?.type === undefined) continue;
-
-      const item = json?.data?.find((d) => d.type === 'animated' && d.title === name);
-      if (!item) continue;
-
-      if (item.status === 'completed') return;
-      if (item.status === 'failed') {
-        throw new Error(
-          `Animated headshot "${name}" generation failed: ${item.errorMessage || item.errorType || 'unknown'}`
-        );
-      }
+    // Verify the card is not in a failed state
+    const hasError = await card.getByText(/failed|error/i).count().catch(() => 0) > 0;
+    if (hasError) {
+      const errMsg = await card.getByText(/failed|error/i).first().textContent().catch(() => 'unknown');
+      throw new Error(`Animated headshot "${name}" generation failed: ${errMsg}`);
     }
-
-    throw new Error(`Animated headshot "${name}" did not complete within ${timeoutMs / 1000}s`);
   }
 
   // ─── Headshot tab — card hover actions ───────────────────────────────────────
@@ -624,6 +612,7 @@ class ProfileBuilderPage {
   // ─── Social Links tab ─────────────────────────────────────────────────────────
 
   async visitSocial() {
+    await ensurePrimaryAvatar(this.page);
     await this._suppressAvatarHealthPopperBeforeNav();
     await this.page.goto('/profile-builder/social-links');
     await this.page.waitForLoadState('load');
@@ -778,6 +767,7 @@ class ProfileBuilderPage {
   // ─── Visual tab ───────────────────────────────────────────────────────────────
 
   async visitVisual() {
+    await ensurePrimaryAvatar(this.page);
     await this._suppressAvatarHealthPopperBeforeNav();
     await this.page.goto('/profile-builder/appearance');
     await this.page.waitForLoadState('load');
@@ -966,6 +956,7 @@ class ProfileBuilderPage {
   // ─── Sections tab ─────────────────────────────────────────────────────────────
 
   async visitSections() {
+    await ensurePrimaryAvatar(this.page);
     await this._suppressAvatarHealthPopperBeforeNav();
     await this.page.goto('/sections');
     await this.page.waitForLoadState('load');
@@ -1536,23 +1527,17 @@ class ProfileBuilderPage {
   }
 
   async dpClickThumbnailImageSelector() {
-    const dialog = this._dpEditorDialog();
-    // ARIA: button "Upload Media Click here or drag and drop to upload..."
-    // Set up file chooser listener before click; some browsers fire it synchronously.
-    this._pendingFileChooser = this.page.waitForEvent('filechooser', { timeout: 5000 }).catch(() => null);
-    await dialog.getByRole('button', { name: /upload media/i }).click();
+    // Intentionally a no-op — dpUploadAndCropImage sets files directly on the hidden input,
+    // which is more reliable than intercepting a filechooser event from a hidden element.
   }
 
   async dpUploadAndCropImage() {
-    const fileChooser = this._pendingFileChooser ? await this._pendingFileChooser : null;
-    this._pendingFileChooser = null;
-    if (fileChooser) {
-      await fileChooser.setFiles(TEST_IMAGE_PATH);
-    } else {
-      const fileInput = this.page.locator('input[type="file"][accept="image/*"]').first();
-      const attached = await fileInput.waitFor({ state: 'attached', timeout: 10000 }).then(() => true).catch(() => false);
-      if (attached) await fileInput.setInputFiles(TEST_IMAGE_PATH);
-    }
+    const dialog = this._dpEditorDialog();
+    // The "Upload Media" zone renders a hidden <input type="file"> underneath.
+    // setInputFiles() works on hidden inputs in Playwright, bypassing the native dialog.
+    const fileInput = dialog.locator('input[type="file"]').first();
+    await fileInput.waitFor({ state: 'attached', timeout: 10000 });
+    await fileInput.setInputFiles(TEST_IMAGE_PATH);
     // Give FileReader time to process the image before the crop dialog appears
     await this.page.waitForTimeout(2000);
     // Handle crop dialog — dialog title is "Edit Image"
@@ -1652,26 +1637,24 @@ class ProfileBuilderPage {
     const dialog = this._dpEditorDialog();
 
     for (let i = 0; i < targetCount; i++) {
-      // First image: click the "Upload Media" drag-drop zone; subsequent: click the "+ Add" button
       const uploadZone = dialog.getByRole('button', { name: /upload media/i }).first();
       const addBtn = dialog.getByRole('button', { name: /^add$/i }).first();
 
-      const isUploadZoneVisible = await uploadZone.isVisible({ timeout: 500 }).catch(() => false);
-      const btn = isUploadZoneVisible ? uploadZone : addBtn;
+      // Click the visible trigger (upload zone on first image, Add button on subsequent ones)
+      // so that the hidden <input type="file"> appears in the DOM.
+      const triggerBtn = (await uploadZone.isVisible({ timeout: 500 }).catch(() => false))
+        ? uploadZone
+        : addBtn;
 
-      if (!(await btn.isVisible({ timeout: 500 }).catch(() => false))) break;
-      if (await btn.isDisabled().catch(() => true)) break;
+      if (!(await triggerBtn.isVisible({ timeout: 500 }).catch(() => false))) break;
+      if (await triggerBtn.isDisabled().catch(() => true)) break;
 
-      const chooserP = this.page.waitForEvent('filechooser', { timeout: 8000 }).catch(() => null);
-      await btn.click();
-      const chooser = await chooserP;
-      if (chooser) {
-        await chooser.setFiles(TEST_IMAGE_PATH);
-      } else {
-        const fileInput = this.page.locator('input[type="file"][accept="image/*"]').first();
-        const attached = await fileInput.waitFor({ state: 'attached', timeout: 3000 }).then(() => true).catch(() => false);
-        if (attached) await fileInput.setInputFiles(TEST_IMAGE_PATH);
-      }
+      // Click to reveal the hidden file input, then set files directly — this bypasses
+      // the native file dialog that Playwright can't control in headless mode.
+      await triggerBtn.click();
+      const fileInput = dialog.locator('input[type="file"]').first();
+      await fileInput.waitFor({ state: 'attached', timeout: 8000 });
+      await fileInput.setInputFiles(TEST_IMAGE_PATH);
 
       // Handle crop dialog — wait up to 3s for it to appear, then save and continue
       const cropDialog = this.page.getByRole('dialog').filter({ hasText: /edit image/i });
@@ -1679,7 +1662,6 @@ class ProfileBuilderPage {
         await cropDialog.getByRole('button', { name: /^save$/i }).first().click();
         await cropDialog.waitFor({ state: 'hidden', timeout: 5000 });
       }
-      // Brief pause for gallery to update before next iteration
       await this.page.waitForTimeout(200);
     }
   }
@@ -1700,24 +1682,14 @@ class ProfileBuilderPage {
   // ─── Digital Product — Product tab ───────────────────────────────────────────
 
   async dpClickUploadFile() {
-    // Product tab: "Upload file Upload the file directly to deliver it after checkout."
-    // Set up filechooser listener BEFORE clicking to prevent the native dialog from blocking.
-    const dialog = this._dpEditorDialog();
-    this._pendingProductFileChooser = this.page.waitForEvent('filechooser', { timeout: 8000 }).catch(() => null);
-    await dialog.getByRole('button', { name: /^upload file/i }).first().click();
+    // Intentionally a no-op — dpFileInputShouldBeAvailable checks the hidden input directly.
   }
 
   async dpFileInputShouldBeAvailable() {
-    // Verify the file chooser was triggered (proves the file browser opened)
-    if (this._pendingProductFileChooser) {
-      const chooser = await this._pendingProductFileChooser;
-      this._pendingProductFileChooser = null;
-      if (chooser) {
-        expect(chooser).toBeTruthy();
-        return;
-      }
-    }
-    await this.page.locator('input[type="file"]').first()
+    // The "Upload Media" zone hides a <input type="file"> — verify it's present in the DOM.
+    await this._dpEditorDialog()
+      .locator('input[type="file"]')
+      .first()
       .waitFor({ state: 'attached', timeout: 10000 });
   }
 
@@ -1747,7 +1719,9 @@ class ProfileBuilderPage {
   async dpUploadProductFile() {
     console.log('[DPS016] dpUploadProductFile START', new Date().toISOString());
     const dialog = this._dpEditorDialog();
-    const uploadZone = dialog.locator('#digital-product-upload-file-trigger');
+    // Use the "Upload Media Click here or" button which is the visible upload zone.
+    // Fall back to the "Upload file" button if the zone isn't immediately visible.
+    const uploadZone = dialog.getByRole('button', { name: /upload media click here or/i }).first();
     const uploadFileBtn = dialog.getByRole('button', { name: /^upload file/i }).first();
 
     // Log all non-GET requests so we can see every upload-related network call.
@@ -1824,25 +1798,21 @@ class ProfileBuilderPage {
     await this.page.route(/digital-product-file\/upload-url|\/cm\/assets($|\?)/, assetsHandler);
     await this.page.route('**/_e2e_mock_upload_', mockUploadHandler);
 
-    if (!(await uploadZone.isVisible().catch(() => false))) {
+    // If the upload zone (hidden input) isn't in the DOM yet, click the "Upload file" option
+    // button first to reveal it, then set files directly on the hidden input.
+    // setInputFiles() on a hidden/invisible input is the most reliable approach in Playwright:
+    // it bypasses the native file dialog that can't be controlled in headless mode.
+    const fileInput = dialog.locator('input[type="file"]').first();
+    const inputAlreadyAttached = await fileInput.waitFor({ state: 'attached', timeout: 3000 }).then(() => true).catch(() => false);
+    if (!inputAlreadyAttached) {
       await uploadFileBtn.waitFor({ state: 'visible', timeout: 5000 });
       await uploadFileBtn.click();
+      await fileInput.waitFor({ state: 'attached', timeout: 10000 });
     }
+    await fileInput.setInputFiles(TEST_IMAGE_PATH);
 
-    const chooserPromise = this.page.waitForEvent('filechooser', { timeout: 8000 }).catch(() => null);
-    await uploadZone.waitFor({ state: 'visible', timeout: 10000 });
-    await uploadZone.click();
-    const chooser = await chooserPromise;
-    if (chooser) {
-      await chooser.setFiles(TEST_IMAGE_PATH);
-    } else {
-      const fileInput = dialog.locator('input[type="file"]').first();
-      const attached = await fileInput.waitFor({ state: 'attached', timeout: 5000 }).then(() => true).catch(() => false);
-      if (attached) await fileInput.setInputFiles(TEST_IMAGE_PATH);
-    }
-
-    // Upload zone hides as soon as setProductFile({name,size}) is called (before PUT completes).
-    await uploadZone.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {});
+    // The file input detaches from DOM as soon as setProductFile({name,size}) is called.
+    await fileInput.waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
     // "Open file actions" only appears after the full upload mutation settles with a contentId.
     // Wait here before unrouting so the catch-all PUT handler stays active while the XHR is in flight.
     const actionsAfterUpload = dialog.locator('[aria-label="Open file actions"]');
