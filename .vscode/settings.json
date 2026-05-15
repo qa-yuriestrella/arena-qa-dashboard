@@ -1,0 +1,13 @@
+{
+  "cucumberautocomplete.steps": [
+    "tests/step_definitions/**/*.steps.js"
+  ],
+  "cucumberautocomplete.strictGherkinCompletion": false,
+  "cucumber.features": [
+    "tests/features/**/*.feature"
+  ],
+  "cucumber.glue": [
+    "tests/step_definitions/**/*.steps.js",
+    "tests/fixtures.js"
+  ]
+}
