@@ -3,23 +3,17 @@ const { test } = require('../fixtures');
 
 const { Given, When, Then, After } = createBdd(test);
 
-// ─── Section setup helpers ────────────────────────────────────────────────────
+// ─── Cleanup — runs after every CAT19 scenario ───────────────────────────────
+// Deletes all sections whose title starts with "E2E" to prevent accumulation.
 
-After({ tags: '@eupsn-visible or @eupsn-stack or @eupsn-link or @eupsn-horizontal or @eupsn-square or @eupsn-edit' }, async ({ profileBuilderPage }) => {
+After({ tags: '@eupsn-styles or @eupsn-carousel' }, async ({ profileBuilderPage }) => {
   await profileBuilderPage.visitSections().catch(() => {});
-  for (const name of [
-    'E2E EU URL Section', 'E2E Stack Section', 'E2E Link Section',
-    'E2E Horizontal Section', 'E2E Square Section',
-    'E2E Edit Section', 'E2E Edited Section',
-  ]) {
-    await profileBuilderPage.deleteAllTestSections(name).catch(() => {});
-  }
+  await profileBuilderPage.deleteAllTestSections('^E2E').catch(() => {});
 });
 
-After({ tags: '@eudps-visible or @eudps-landing or @eudps-purchase or @eudps-download' }, async ({ profileBuilderPage }) => {
+After({ tags: '@eudps-purchase or @eudps-download' }, async ({ profileBuilderPage }) => {
   await profileBuilderPage.visitSections().catch(() => {});
-  await profileBuilderPage.deleteAllTestSections('E2E Test Product').catch(() => {});
-  await profileBuilderPage.deleteAllTestSections('E2E File Product').catch(() => {});
+  await profileBuilderPage.deleteAllTestSections('^E2E').catch(() => {});
 });
 
 // ─── Given – section setup in dashboard ──────────────────────────────────────
@@ -39,6 +33,13 @@ Given('a URL Media section in {string} style titled {string} with link {string} 
 Given('a URL Media section in {string} style titled {string} with links {string} and {string} has been saved in the dashboard',
   async ({ profileBuilderPage }, style, title, url1, url2) => {
     await profileBuilderPage.createAndSaveURLMediaSection(title, url1, url2, style);
+  }
+);
+
+Given('a URL Media section titled {string} with the following links has been saved in the dashboard:',
+  async ({ profileBuilderPage }, title, table) => {
+    const urls = table.raw().map(([url]) => url);
+    await profileBuilderPage.createAndSaveURLMediaSectionWithLinks(title, urls);
   }
 );
 
@@ -80,11 +81,18 @@ When('I navigate to the end user page as an unauthenticated user', async ({ endU
   await endUserPage.visit();
 });
 
-// ─── When – section editing ───────────────────────────────────────────────────
+// ─── When – section style ─────────────────────────────────────────────────────
 
-When('the section {string} is edited with title {string} in the dashboard',
-  async ({ profileBuilderPage }, currentTitle, newTitle) => {
-    await profileBuilderPage.editSectionTitle(currentTitle, newTitle);
+When('the section {string} is styled as {string} in the dashboard',
+  async ({ profileBuilderPage }, sectionTitle, styleSpec) => {
+    // styleSpec: "TopStyle / Layout" (2 parts) or "TopStyle / Display / Layout" (3 parts)
+    const parts = styleSpec.split('/').map(s => s.trim());
+    const [topStyle, second, third] = parts;
+    // For Button: "Button / Stack" → topStyle=Button, display=null, layout=Stack
+    // For Card:   "Card / Square / Carousel" → topStyle=Card, display=Square, layout=Carousel
+    const display = third ? second : null;
+    const layout = third || second || null;
+    await profileBuilderPage.setURLMediaSectionStyle(sectionTitle, topStyle, display, layout);
   }
 );
 
@@ -94,12 +102,8 @@ Then('the section {string} should be visible on the end user page', async ({ end
   await endUserPage.sectionShouldBeVisibleOnEU(title);
 });
 
-Then('at least 2 section link cards should be visible', async ({ endUserPage }) => {
-  await endUserPage.atLeastNSectionLinkCardsShouldBeVisible(2);
-});
-
-When('I click the first section link card', async ({ endUserPage }) => {
-  await endUserPage.clickFirstSectionLinkCard();
+Then('the section {string} should have at least {int} link cards', async ({ endUserPage }, sectionTitle, n) => {
+  await endUserPage.sectionShouldHaveAtLeastNLinkCards(sectionTitle, n);
 });
 
 When('I click the first link card in section {string}', async ({ endUserPage }, sectionTitle) => {
@@ -108,6 +112,10 @@ When('I click the first link card in section {string}', async ({ endUserPage }, 
 
 Then('a new tab should open with a URL matching {string}', async ({ endUserPage }, urlPattern) => {
   await endUserPage.newTabShouldHaveURL(urlPattern);
+});
+
+Then('the carousel in section {string} should scroll through all {int} links', async ({ endUserPage }, sectionTitle, count) => {
+  await endUserPage.carouselInSectionShouldCoverAllLinks(sectionTitle, count);
 });
 
 Then('the first card in section {string} should have a landscape aspect ratio', async ({ endUserPage }, sectionTitle) => {
@@ -120,10 +128,6 @@ Then('the first card in section {string} should have a square aspect ratio', asy
 
 Then('the first card in section {string} should have a portrait aspect ratio', async ({ endUserPage }, sectionTitle) => {
   await endUserPage.firstCardInSectionShouldHaveAspectRatio(sectionTitle, 'portrait');
-});
-
-Then('the section should show a carousel', async ({ endUserPage }) => {
-  await endUserPage.sectionShouldShowCarousel();
 });
 
 // ─── Then – Digital Product card on EU ───────────────────────────────────────

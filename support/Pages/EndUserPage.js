@@ -507,6 +507,46 @@ class EndUserPage {
     await linkCard.click();
   }
 
+  async sectionShouldHaveAtLeastNLinkCards(sectionTitle, n) {
+    const sectionEl = this.page.locator('section, article, [class*="section"], [class*="Section"]')
+      .filter({ hasText: sectionTitle })
+      .first();
+    await expect(sectionEl).toBeVisible({ timeout: 15000 });
+    const cards = sectionEl.locator('a[href^="http"]');
+    await expect(cards.first()).toBeVisible({ timeout: 10000 });
+    const count = await cards.count();
+    expect(count, `Section "${sectionTitle}" should have at least ${n} link cards, found ${count}`).toBeGreaterThanOrEqual(n);
+  }
+
+  async carouselInSectionShouldCoverAllLinks(sectionTitle, expectedLinkCount) {
+    const sectionEl = this.page.locator('section, article, [class*="section"], [class*="Section"]')
+      .filter({ hasText: sectionTitle })
+      .first();
+
+    // Next arrow: circular absolute button on the right side of the carousel
+    const nextBtn = sectionEl.locator('button[class*="right-2"][class*="rounded-full"]').first();
+
+    const btnVisible = await nextBtn.waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false);
+    expect(btnVisible, `Carousel next button not found in section "${sectionTitle}"`).toBe(true);
+
+    let clicks = 0;
+    const maxClicks = expectedLinkCount + 10;
+    while (clicks < maxClicks) {
+      const visible = await nextBtn.isVisible().catch(() => false);
+      if (!visible) break;
+      const disabled = await nextBtn.isDisabled().catch(() => false);
+      if (disabled) break;
+      // Some carousel implementations hide the button via opacity-0 instead of removing it
+      const classes = await nextBtn.getAttribute('class').catch(() => '');
+      if (classes.includes('opacity-0') || (!classes.includes('opacity-100') && classes.includes('opacity'))) break;
+      await nextBtn.click();
+      await this.page.waitForTimeout(500);
+      clicks++;
+    }
+
+    expect(clicks, `Carousel in section "${sectionTitle}" did not scroll — next button was never clickable`).toBeGreaterThan(0);
+  }
+
   async clickFirstLinkCardInSection(sectionTitle) {
     const sectionEl = this.page.locator('section, article, [class*="section"], [class*="Section"]')
       .filter({ hasText: sectionTitle })

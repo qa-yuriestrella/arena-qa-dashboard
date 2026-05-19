@@ -1402,35 +1402,39 @@ class ProfileBuilderPage {
 
   async deleteAllTestSections(titlePattern) {
     const re = new RegExp(titlePattern, 'i');
-    // Each section card: generic > heading[level=3] + button (options/actions)
-    while (true) {
-      await this.page.waitForTimeout(300);
+    for (let attempt = 0; attempt < 30; attempt++) {
+      await this.page.waitForTimeout(400);
       const heading = this.page.getByRole('heading', { level: 3 })
         .filter({ hasText: re })
         .first();
-      if (!await heading.isVisible({ timeout: 2000 }).catch(() => false)) break;
+      if (!await heading.isVisible({ timeout: 3000 }).catch(() => false)) break;
 
-      // Button is sibling of the heading's parent div (text container), not of the heading itself
+      // Button is sibling of the heading's parent div (text container)
       const optionsBtn = heading.locator('xpath=../following-sibling::button').first();
       const clicked = await optionsBtn.click({ timeout: 5000 }).then(() => true).catch(() => false);
-      if (!clicked) break;
+      if (!clicked) {
+        // Reload the page and try again rather than breaking
+        await this.page.reload({ waitUntil: 'load' });
+        await this.page.waitForTimeout(1000);
+        continue;
+      }
 
-      // Delete option in the dropdown menu ("Delete Section")
-      const deleteOption = this.page.getByRole('menuitem', { name: /delete section/i })
-        .or(this.page.getByRole('menuitem', { name: /delete/i }))
-        .or(this.page.getByRole('button', { name: /delete/i }))
-        .first();
-      if (!await deleteOption.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false)) {
+      const deleteOption = this.page.getByRole('button', { name: 'Delete Section' });
+      const menuFound = await deleteOption.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false);
+      if (!menuFound) {
         await this.page.keyboard.press('Escape');
-        break;
+        continue;
       }
       await deleteOption.click();
 
-      // Confirm deletion dialog
-      const confirmBtn = this.page.getByRole('button', { name: /^delete$/i }).first();
-      await confirmBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
-      await confirmBtn.click().catch(() => {});
-      await this.page.waitForTimeout(600);
+      // Confirm deletion dialog (button may say "Delete" or "Confirm")
+      const confirmBtn = this.page.getByRole('button', { name: /^delete$|^confirm/i }).first();
+      if (await confirmBtn.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false)) {
+        await confirmBtn.click();
+      }
+
+      // Wait for the section to actually disappear before the next iteration
+      await heading.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
     }
   }
 
@@ -2040,6 +2044,59 @@ class ProfileBuilderPage {
 
   // ─── Setup helpers (used by CAT19 Given steps) ────────────────────────────────
   // These create fully-configured sections from scratch to set up EU-side tests.
+
+  async selectURLMediaStyleFull({ topStyle, display = null, layout = null }) {
+    const dialog = await this._sectionEditorDialog();
+    // Each level is a clickable option (button, radio, or custom div)
+    const pick = async (label) => {
+      const el = dialog.locator('div, button, label, [role="radio"], [role="option"]')
+        .filter({ hasText: new RegExp(`^${label}$`, 'i') })
+        .first();
+      await el.waitFor({ state: 'visible', timeout: 8000 });
+      await el.click();
+      await this.page.waitForTimeout(400);
+    };
+    await pick(topStyle);
+    if (display) await pick(display);
+    if (layout) await pick(layout);
+  }
+
+  async setURLMediaSectionStyle(sectionTitle, topStyle, display = null, layout = null) {
+    await this.visitSections();
+    const re = new RegExp(sectionTitle, 'i');
+    const heading = this.page.getByRole('heading', { level: 3 }).filter({ hasText: re }).first();
+    await expect(heading).toBeVisible({ timeout: 10000 });
+    const optionsBtn = heading.locator('xpath=../following-sibling::button').first();
+    const clicked = await optionsBtn.click({ timeout: 5000 }).then(() => true).catch(() => false);
+    if (!clicked) throw new Error(`Could not open options for section "${sectionTitle}"`);
+    const editOption = this.page.getByRole('menuitem', { name: /edit section/i })
+      .or(this.page.getByRole('button', { name: /edit section/i }))
+      .first();
+    await editOption.waitFor({ state: 'visible', timeout: 3000 });
+    await editOption.click();
+    await this.sectionEditorShouldBeVisible();
+    await this.switchToSectionTab('Visual');
+    await this.selectURLMediaStyleFull({ topStyle, display, layout });
+    await this.saveSectionEditor();
+    await this.sectionShouldBeVisibleOnPage(sectionTitle);
+  }
+
+  async createAndSaveURLMediaSectionWithLinks(title, urls, style = null) {
+    await this.visitSections();
+    await this.clickAddSection();
+    await this.selectURLMedia();
+    await this.sectionEditorShouldBeVisible();
+    for (const url of urls) {
+      await this.addSectionURL(url);
+    }
+    await this.switchToSectionTab('Visual');
+    await this.setSectionTitle(title);
+    if (style) {
+      await this.selectCardStyle(style);
+    }
+    await this.saveSectionEditor();
+    await this.sectionShouldBeVisibleOnPage(title);
+  }
 
   async createAndSaveURLMediaSection(title, url1, url2 = null, style = null) {
     await this.visitSections();
