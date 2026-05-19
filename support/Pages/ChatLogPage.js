@@ -1,7 +1,7 @@
 const { expect } = require('@playwright/test');
 const { ensurePrimaryAvatar } = require('../helpers/avatarHelper');
 
-const EU_URL = process.env.EU_URL || 'https://dev-avatar.arena.im/arena-automation';
+const EU_URL = process.env.EU_URL || 'https://dev-avatar.arena.im/automation1arena';
 
 class ChatLogPage {
   constructor(page) {

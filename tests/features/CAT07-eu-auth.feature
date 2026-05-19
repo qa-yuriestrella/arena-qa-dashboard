@@ -51,7 +51,7 @@ Feature: CAT07 - End User Authentication
     When I click the end user profile button
     And I select email signup
     And I click the sign in link
-    And I fill in the signin email with "automation.arena1@gmail.com"
+    And I fill in the signin email with "automation.arena1+1@gmail.com"
     And I fill in the signin password with "Automation@123"
     And I click Sign In
     And I fill in the display name

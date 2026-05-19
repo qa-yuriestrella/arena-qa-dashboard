@@ -283,7 +283,7 @@ class AvatarManagementPage {
   // Deletes every non-primary avatar one by one, leaving only the primary.
   // The primary avatar slug is derived from EU_URL so it is never deleted.
   async deleteAllNonPrimaryAvatars() {
-    const primarySlug = (process.env.EU_URL || 'arena-automation').split('/').pop();
+    const primarySlug = (process.env.EU_URL || 'automation1arena').split('/').pop();
 
     while (true) {
       await this.openSwitchAvatarsDialog();
