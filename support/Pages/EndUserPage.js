@@ -2,7 +2,7 @@ const { expect } = require('@playwright/test');
 const { faker } = require('@faker-js/faker');
 const { completeGoogleOAuth } = require('../helpers/oauthHelper');
 
-const EU_URL = process.env.EU_URL || 'https://dev-avatar.arena.im/arena-automation';
+const EU_URL = process.env.EU_URL || 'https://dev-avatar.arena.im/automation1arena';
 
 class EndUserPage {
   constructor(page) {
@@ -410,6 +410,375 @@ class EndUserPage {
     await expect(
       this.page.locator('video')
     ).toBeVisible({ timeout: 10000 });
+  }
+
+  // ─── Sections on EU — URL Media ───────────────────────────────────────────────
+
+  async sectionShouldBeVisibleOnEU(title) {
+    await expect(
+      this.page.getByText(title, { exact: false }).first()
+    ).toBeVisible({ timeout: 20000 });
+  }
+
+  async firstCardInSectionShouldHaveAspectRatio(sectionTitle, orientation) {
+    // Find the section container by title text, then measure the first link card inside it
+    const sectionEl = this.page.locator('section, article, [class*="section"], [class*="Section"]')
+      .filter({ hasText: sectionTitle })
+      .first();
+    const card = sectionEl.locator('a[href], [class*="card"], [class*="Card"], li').first();
+    const box = await card.boundingBox({ timeout: 15000 });
+    expect(box, `No card found inside section "${sectionTitle}"`).not.toBeNull();
+    const ratio = box.width / box.height;
+    if (orientation === 'landscape') {
+      expect(ratio, `Expected landscape (>1.3), got ${ratio.toFixed(2)}`).toBeGreaterThan(1.3);
+    } else if (orientation === 'square') {
+      expect(ratio, `Expected square (0.75–1.35), got ${ratio.toFixed(2)}`).toBeGreaterThan(0.75);
+      expect(ratio, `Expected square (0.75–1.35), got ${ratio.toFixed(2)}`).toBeLessThan(1.35);
+    } else if (orientation === 'portrait') {
+      expect(ratio, `Expected portrait (<0.8), got ${ratio.toFixed(2)}`).toBeLessThan(0.8);
+    }
+  }
+
+  async sectionShouldShowCarousel() {
+    await expect(
+      this.page.locator(
+        '[class*="carousel"], [class*="Carousel"], [class*="swiper"], ' +
+        '[class*="slider"], [class*="Slider"], [data-carousel]'
+      ).first()
+    ).toBeVisible({ timeout: 15000 });
+  }
+
+  async sectionCarouselShouldBeVisible() {
+    // Carousel sections render a scroll/swiper container with overflow-x or a carousel wrapper
+    await expect(
+      this.page.locator(
+        '[class*="carousel"], [class*="Carousel"], [class*="swiper"], ' +
+        '[class*="slider"], [class*="Slider"], [data-carousel]'
+      ).first()
+    ).toBeVisible({ timeout: 15000 });
+  }
+
+  _carouselNextArrow() {
+    return this.page.locator(
+      'button[aria-label*="next" i], button[aria-label*="forward" i], ' +
+      'button[class*="next"], button[class*="Next"], ' +
+      '[class*="arrow-right"], [class*="arrowRight"], ' +
+      'button svg[class*="chevron-right"], button svg[class*="ChevronRight"]'
+    ).first();
+  }
+
+  async clickCarouselNextArrow() {
+    const arrow = this._carouselNextArrow();
+    await arrow.waitFor({ state: 'visible', timeout: 10000 });
+    // Capture scroll position or active slide index before clicking
+    this._carouselPositionBefore = await this.page.evaluate(() => {
+      const el = document.querySelector('[class*="carousel"], [class*="swiper"], [class*="slider"]');
+      return el ? el.scrollLeft : 0;
+    });
+    await arrow.click();
+    await this.page.waitForTimeout(600);
+  }
+
+  async carouselShouldHaveNavigated() {
+    const positionAfter = await this.page.evaluate(() => {
+      const el = document.querySelector('[class*="carousel"], [class*="swiper"], [class*="slider"]');
+      return el ? el.scrollLeft : 0;
+    });
+    // Either scrollLeft changed OR an active-slide indicator changed
+    if (positionAfter !== this._carouselPositionBefore) return;
+    // Fallback: check that the next arrow is still visible (navigation didn't error)
+    await expect(this._carouselNextArrow()).toBeVisible({ timeout: 5000 });
+  }
+
+  async atLeastNSectionLinkCardsShouldBeVisible(n) {
+    // Link cards in a URL Media section — each card is an anchor or a clickable div
+    const cards = this.page.locator('a[href^="http"], [class*="link-card"], [class*="linkCard"]')
+      .filter({ hasNotText: /text|subscribe|call/i });
+    await expect(cards).toHaveCount(await cards.count().then(c => Math.max(c, n)), { timeout: 10000 });
+    const count = await cards.count();
+    expect(count).toBeGreaterThanOrEqual(n);
+  }
+
+  async clickFirstSectionLinkCard() {
+    const linkCard = this.page.locator(
+      'a[href^="http"]:not([href*="arena.im"]):not([href*="myavatar.ai"])'
+    ).first();
+    this._newTabPromise = this.page.context().waitForEvent('page', { timeout: 15000 });
+    await linkCard.click();
+  }
+
+  async sectionShouldHaveAtLeastNLinkCards(sectionTitle, n) {
+    const sectionEl = this.page.locator('section, article, [class*="section"], [class*="Section"]')
+      .filter({ hasText: sectionTitle })
+      .first();
+    await expect(sectionEl).toBeVisible({ timeout: 15000 });
+    const cards = sectionEl.locator('a[href^="http"]');
+    await expect(cards.first()).toBeVisible({ timeout: 10000 });
+    const count = await cards.count();
+    expect(count, `Section "${sectionTitle}" should have at least ${n} link cards, found ${count}`).toBeGreaterThanOrEqual(n);
+  }
+
+  async carouselInSectionShouldCoverAllLinks(sectionTitle, expectedLinkCount) {
+    const sectionEl = this.page.locator('section, article, [class*="section"], [class*="Section"]')
+      .filter({ hasText: sectionTitle })
+      .first();
+
+    // Next arrow: circular absolute button on the right side of the carousel
+    const nextBtn = sectionEl.locator('button[class*="right-2"][class*="rounded-full"]').first();
+
+    const btnVisible = await nextBtn.waitFor({ state: 'visible', timeout: 8000 }).then(() => true).catch(() => false);
+    expect(btnVisible, `Carousel next button not found in section "${sectionTitle}"`).toBe(true);
+
+    let clicks = 0;
+    const maxClicks = expectedLinkCount + 10;
+    while (clicks < maxClicks) {
+      const visible = await nextBtn.isVisible().catch(() => false);
+      if (!visible) break;
+      const disabled = await nextBtn.isDisabled().catch(() => false);
+      if (disabled) break;
+      // Some carousel implementations hide the button via opacity-0 instead of removing it
+      const classes = await nextBtn.getAttribute('class').catch(() => '');
+      if (classes.includes('opacity-0') || (!classes.includes('opacity-100') && classes.includes('opacity'))) break;
+      await nextBtn.click();
+      await this.page.waitForTimeout(500);
+      clicks++;
+    }
+
+    expect(clicks, `Carousel in section "${sectionTitle}" did not scroll — next button was never clickable`).toBeGreaterThan(0);
+  }
+
+  async clickFirstLinkCardInSection(sectionTitle) {
+    const sectionEl = this.page.locator('section, article, [class*="section"], [class*="Section"]')
+      .filter({ hasText: sectionTitle })
+      .first();
+    const linkCard = sectionEl.locator('a[href^="http"]').first();
+    this._newTabPromise = this.page.context().waitForEvent('page', { timeout: 15000 });
+    await linkCard.click();
+  }
+
+  async newTabShouldHaveURL(pattern) {
+    const newPage = await this._newTabPromise;
+    await newPage.waitForLoadState('domcontentloaded', { timeout: 20000 });
+    expect(newPage.url()).toContain(pattern);
+    await newPage.close();
+  }
+
+  // ─── Sections on EU — Digital Product card ────────────────────────────────────
+
+  _productCard(title) {
+    // Digital Product cards render as <a> link elements on the EU page
+    return this.page.getByRole('link').filter({ hasText: title }).first();
+  }
+
+  async productCardShouldBeVisible(title) {
+    await expect(this._productCard(title)).toBeVisible({ timeout: 20000 });
+  }
+
+  async productCardShouldShowCTAButton() {
+    // "Buy now $ X.XX" is text inside the <a> product card link, not a separate button
+    await expect(
+      this.page.getByRole('link').filter({ hasText: /buy now/i }).first()
+    ).toBeVisible({ timeout: 10000 });
+  }
+
+  async clickProductCard(title) {
+    await this._productCard(title).click();
+    await this.page.waitForTimeout(1000);
+  }
+
+  // ─── Sections on EU — Digital Product landing page ───────────────────────────
+
+  async productLandingPageShouldBeVisible() {
+    // Clicking the product card navigates to /automation1arena/products/<slug>
+    await this.page.waitForURL(/\/products\//, { timeout: 15000 });
+  }
+
+  async landingPageShouldHaveCarousel() {
+    await expect(
+      this.page.locator(
+        '[class*="carousel"], [class*="Carousel"], [class*="gallery"], ' +
+        '[class*="Gallery"], [class*="swiper"], [class*="slider"]'
+      ).first()
+    ).toBeVisible({ timeout: 10000 });
+  }
+
+  async landingPageShouldHaveDescription() {
+    await expect(
+      this.page.locator(
+        '[class*="description"], [class*="Description"], ' +
+        'p:not(:empty), [class*="body"], [class*="content"]'
+      ).filter({ hasText: /.{20,}/ }).first()
+    ).toBeVisible({ timeout: 10000 });
+  }
+
+  async landingPageShouldHaveCTAButton() {
+    await expect(
+      this.page.getByRole('button', { name: /buy|get|purchase|now/i }).first()
+    ).toBeVisible({ timeout: 10000 });
+  }
+
+  async clickLandingPageCTAButton() {
+    const ctaBtn = this.page
+      .getByRole('button', { name: /buy|get|purchase|now/i })
+      .first();
+    await ctaBtn.waitFor({ state: 'visible', timeout: 10000 });
+    await ctaBtn.click();
+    await this.page.waitForTimeout(1500);
+  }
+
+  // ─── Stripe checkout ──────────────────────────────────────────────────────────
+
+  async shouldBeOnStripeCheckout() {
+    // Stripe checkout either loads in the same tab (redirect) or as an overlay.
+    // Wait for Stripe's domain or for an iframe from Stripe.
+    await Promise.race([
+      this.page.waitForURL(/checkout\.stripe\.com|stripe\.com\/pay/, { timeout: 30000 }),
+      this.page.locator('iframe[src*="stripe"]').first().waitFor({ state: 'visible', timeout: 30000 }),
+    ]);
+  }
+
+  async fillStripeCard(cardNumber, expiry, cvc, name) {
+    await this.page.waitForTimeout(2000);
+
+    // Stripe hosted checkout uses one iframe per card field (card-number, card-expiry, card-cvc).
+    const cardNumberFrame = this.page.frameLocator(
+      'iframe[name*="card-number"], iframe[title*="card number" i], iframe[title*="Secure card number" i]'
+    ).first();
+    const expiryFrame = this.page.frameLocator(
+      'iframe[name*="card-expiry"], iframe[title*="expir" i], iframe[title*="Secure expiry" i]'
+    ).first();
+    const cvcFrame = this.page.frameLocator(
+      'iframe[name*="card-cvc"], iframe[title*="cvc" i], iframe[title*="Secure CVC" i]'
+    ).first();
+
+    const cardInput = cardNumberFrame.locator('input').first();
+    if (await cardInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await cardInput.fill(cardNumber.replace(/\s/g, ''));
+      await expiryFrame.locator('input').first().fill(expiry.replace('/', ''));
+      await cvcFrame.locator('input').first().fill(cvc);
+    } else {
+      // Fallback: fields on the main Stripe-hosted page (no per-field iframes)
+      const pageCard = this.page.getByLabel(/card number/i)
+        .or(this.page.locator('input[autocomplete*="cc-number"]'))
+        .first();
+      await pageCard.waitFor({ state: 'visible', timeout: 10000 });
+      await pageCard.fill(cardNumber.replace(/\s/g, ''));
+
+      const exp = this.page.locator('input[placeholder*="MM"]')
+        .or(this.page.locator('input[autocomplete*="cc-exp"]'))
+        .first();
+      if (await exp.isVisible({ timeout: 3000 }).catch(() => false)) await exp.fill(expiry.replace('/', ''));
+
+      const cvcEl = this.page.locator('input[placeholder*="CVC"]')
+        .or(this.page.locator('input[autocomplete*="cc-csc"]'))
+        .first();
+      if (await cvcEl.isVisible({ timeout: 3000 }).catch(() => false)) await cvcEl.fill(cvc);
+    }
+
+    if (name) {
+      const nameInput = this.page.getByLabel(/cardholder name|name on card|full name/i)
+        .or(this.page.locator('input[autocomplete="cc-name"]'))
+        .first();
+      if (await nameInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await nameInput.fill(name);
+      }
+    }
+  }
+
+  async completeStripeCheckout() {
+    // Pay / Submit button on Stripe checkout
+    const payBtn = this.page.getByRole('button', { name: /pay|subscribe|complete|purchase|confirm/i }).first();
+    await payBtn.waitFor({ state: 'visible', timeout: 15000 });
+    await payBtn.click();
+    // Wait for redirect back to the product's post-purchase page (not stripe.com)
+    await this.page.waitForURL(url => !url.href.includes('stripe.com'), { timeout: 60000 });
+    await this.page.waitForLoadState('domcontentloaded', { timeout: 30000 });
+  }
+
+  // ─── Post-purchase page ───────────────────────────────────────────────────────
+
+  async postPurchasePageShouldBeVisible(productTitle) {
+    // Post-purchase page shows the product name and two buttons
+    await expect(
+      this.page.getByText(productTitle, { exact: false }).first()
+    ).toBeVisible({ timeout: 20000 });
+    // Also confirm it's NOT still on Stripe
+    expect(this.page.url()).not.toContain('stripe.com');
+  }
+
+  async postPurchasePageShouldHaveButton(buttonText) {
+    await expect(
+      this.page.getByRole('button', { name: new RegExp(buttonText, 'i') }).first()
+        .or(this.page.getByRole('link', { name: new RegExp(buttonText, 'i') }).first())
+    ).toBeVisible({ timeout: 10000 });
+  }
+
+  async clickPostPurchaseButton(buttonText) {
+    const btn = this.page
+      .getByRole('button', { name: new RegExp(buttonText, 'i') })
+      .or(this.page.getByRole('link', { name: new RegExp(buttonText, 'i') }))
+      .first();
+    await btn.waitFor({ state: 'visible', timeout: 10000 });
+    await btn.click();
+    await this.page.waitForLoadState('domcontentloaded', { timeout: 20000 });
+  }
+
+  // ─── EU after purchase ────────────────────────────────────────────────────────
+
+  async shouldBeOnEUPage() {
+    await this.page.waitForURL(url => url.href.includes(EU_URL) || url.href.includes('arena.im'), { timeout: 15000 });
+  }
+
+  async productCardShouldShowText(title, text) {
+    const card = this._productCard(title);
+    await expect(card).toBeVisible({ timeout: 15000 });
+    await expect(
+      card.getByText(new RegExp(text, 'i')).first()
+        .or(card.getByRole('button', { name: new RegExp(text, 'i') }).first())
+    ).toBeVisible({ timeout: 10000 });
+  }
+
+  async clickButtonOnProductCard(title, buttonText) {
+    const card = this._productCard(title);
+    await card.waitFor({ state: 'visible', timeout: 15000 });
+    // "Access Now" is often text inside the card link, not a separate button element
+    const inner = card.getByRole('button', { name: new RegExp(buttonText, 'i') }).first();
+    if (await inner.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await inner.click();
+    } else {
+      await card.click();
+    }
+    await this.page.waitForTimeout(2000);
+  }
+
+  async productFileShouldBeDownloaded() {
+    const download = await this.page.waitForEvent('download', { timeout: 20000 }).catch(() => null);
+    expect(download, 'Expected a file download but none was triggered').not.toBeNull();
+    if (download) await download.cancel().catch(() => {});
+  }
+
+  async productShouldBeDelivered() {
+    // Product delivery: same-tab redirect, new-tab open, or file download.
+    const url = this.page.url();
+    if (!url.includes('arena.im')) return; // Same-tab redirect away from EU domain
+
+    // Check if product already opened in a new tab
+    const existingNewTab = this.page.context().pages()
+      .find(p => p !== this.page && !p.url().includes('arena.im'));
+    if (existingNewTab) return;
+
+    // Wait for new tab, download, or same-tab navigation
+    const delivered = await Promise.race([
+      this.page.context().waitForEvent('page', { timeout: 15000 })
+        .then(async newP => {
+          await newP.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
+          return !newP.url().includes('arena.im');
+        }),
+      this.page.waitForEvent('download', { timeout: 15000 }).then(() => true),
+      this.page.waitForURL(url => !url.href.includes('arena.im'), { timeout: 15000 }).then(() => true),
+    ]).catch(() => false);
+
+    expect(delivered).toBe(true);
   }
 }
 

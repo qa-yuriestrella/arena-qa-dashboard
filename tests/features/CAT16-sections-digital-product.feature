@@ -121,6 +121,24 @@ Feature: CAT16 - Sections – Digital Product
 
   # ─── Discard modal ───────────────────────────────────────────────────────────
 
+  # ─── Save ────────────────────────────────────────────────────────────────────
+
+  @dpd-save
+  Scenario: DPS015 - Saving a fully configured Digital Product fires the save request and the section appears on the page
+    Given the Digital Product editor is open on the Thumbnail tab
+    When I fill the product title with "E2E Digital Product"
+    And I fill the product price with "9.99"
+    And I click Next to go to Landing Page
+    And I fill the product slug with "e2e-digital-product"
+    And I fill the landing page description with "E2E test product description."
+    And I click Next to go to Product tab
+    And I fill the external product URL with "https://myavatar.ai/"
+    And I save the digital product
+    Then the digital product save request should be fired
+    And the section "E2E Digital Product" should be visible on the sections page
+
+  # ─── Discard modal ───────────────────────────────────────────────────────────
+
   @dpd-discard1
   Scenario: DPS014 - Cancel button and X button both open the discard confirmation modal
     Given the Digital Product editor is open on the Thumbnail tab

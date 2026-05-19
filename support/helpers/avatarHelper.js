@@ -1,4 +1,4 @@
-const PRIMARY_SLUG = (process.env.EU_URL || 'https://dev-avatar.arena.im/arena-automation').split('/').pop();
+const PRIMARY_SLUG = (process.env.EU_URL || 'https://dev-avatar.arena.im/automation1arena').split('/').pop();
 
 /**
  * Ensures the Arena Automation avatar is active before running a test.
@@ -7,7 +7,7 @@ const PRIMARY_SLUG = (process.env.EU_URL || 'https://dev-avatar.arena.im/arena-a
  *  1. Navigate to / so the dashboard fires the "current" API request.
  *  2. Read personalize.slug from the response — this is the authoritative
  *     source of which avatar is currently selected.
- *  3. If the slug already matches arena-automation, return immediately.
+ *  3. If the slug already matches automation1arena, return immediately.
  *  4. Otherwise wait for the Switch Avatars dialog and click the primary avatar.
  */
 async function ensurePrimaryAvatar(page) {
