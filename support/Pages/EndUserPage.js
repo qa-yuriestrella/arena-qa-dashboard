@@ -420,6 +420,34 @@ class EndUserPage {
     ).toBeVisible({ timeout: 20000 });
   }
 
+  async firstCardInSectionShouldHaveAspectRatio(sectionTitle, orientation) {
+    // Find the section container by title text, then measure the first link card inside it
+    const sectionEl = this.page.locator('section, article, [class*="section"], [class*="Section"]')
+      .filter({ hasText: sectionTitle })
+      .first();
+    const card = sectionEl.locator('a[href], [class*="card"], [class*="Card"], li').first();
+    const box = await card.boundingBox({ timeout: 15000 });
+    expect(box, `No card found inside section "${sectionTitle}"`).not.toBeNull();
+    const ratio = box.width / box.height;
+    if (orientation === 'landscape') {
+      expect(ratio, `Expected landscape (>1.3), got ${ratio.toFixed(2)}`).toBeGreaterThan(1.3);
+    } else if (orientation === 'square') {
+      expect(ratio, `Expected square (0.75–1.35), got ${ratio.toFixed(2)}`).toBeGreaterThan(0.75);
+      expect(ratio, `Expected square (0.75–1.35), got ${ratio.toFixed(2)}`).toBeLessThan(1.35);
+    } else if (orientation === 'portrait') {
+      expect(ratio, `Expected portrait (<0.8), got ${ratio.toFixed(2)}`).toBeLessThan(0.8);
+    }
+  }
+
+  async sectionShouldShowCarousel() {
+    await expect(
+      this.page.locator(
+        '[class*="carousel"], [class*="Carousel"], [class*="swiper"], ' +
+        '[class*="slider"], [class*="Slider"], [data-carousel]'
+      ).first()
+    ).toBeVisible({ timeout: 15000 });
+  }
+
   async sectionCarouselShouldBeVisible() {
     // Carousel sections render a scroll/swiper container with overflow-x or a carousel wrapper
     await expect(
@@ -472,11 +500,18 @@ class EndUserPage {
   }
 
   async clickFirstSectionLinkCard() {
-    // Link cards inside sections are anchor tags or clickable divs.
-    // They typically sit inside a section container with the section title nearby.
     const linkCard = this.page.locator(
-      'a[href^="http"]:not([href*="arena.im/automation1arena"])'
+      'a[href^="http"]:not([href*="arena.im"]):not([href*="myavatar.ai"])'
     ).first();
+    this._newTabPromise = this.page.context().waitForEvent('page', { timeout: 15000 });
+    await linkCard.click();
+  }
+
+  async clickFirstLinkCardInSection(sectionTitle) {
+    const sectionEl = this.page.locator('section, article, [class*="section"], [class*="Section"]')
+      .filter({ hasText: sectionTitle })
+      .first();
+    const linkCard = sectionEl.locator('a[href^="http"]').first();
     this._newTabPromise = this.page.context().waitForEvent('page', { timeout: 15000 });
     await linkCard.click();
   }
@@ -674,6 +709,12 @@ class EndUserPage {
       await card.click();
     }
     await this.page.waitForTimeout(2000);
+  }
+
+  async productFileShouldBeDownloaded() {
+    const download = await this.page.waitForEvent('download', { timeout: 20000 }).catch(() => null);
+    expect(download, 'Expected a file download but none was triggered').not.toBeNull();
+    if (download) await download.cancel().catch(() => {});
   }
 
   async productShouldBeDelivered() {

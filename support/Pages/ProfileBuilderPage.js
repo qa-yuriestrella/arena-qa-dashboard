@@ -1379,18 +1379,58 @@ class ProfileBuilderPage {
 
   // ─── Sections tab – cleanup helper ───────────────────────────────────────────
 
+  async editSectionTitle(title, newTitle) {
+    const re = new RegExp(title, 'i');
+    const heading = this.page.getByRole('heading', { level: 3 }).filter({ hasText: re }).first();
+    await expect(heading).toBeVisible({ timeout: 10000 });
+    // Button is a sibling of the heading's parent div (text container), not of the heading itself
+    const optionsBtn = heading.locator('xpath=../following-sibling::button').first();
+    const clicked = await optionsBtn.click({ timeout: 5000 }).then(() => true).catch(() => false);
+    if (!clicked) throw new Error(`Could not open options for section "${title}"`);
+    const editOption = this.page.getByRole('menuitem', { name: /edit section/i })
+      .or(this.page.getByRole('button', { name: /edit section/i }))
+      .or(this.page.getByRole('menuitem', { name: /^edit$/i }))
+      .first();
+    await editOption.waitFor({ state: 'visible', timeout: 3000 });
+    await editOption.click();
+    await this.sectionEditorShouldBeVisible();
+    await this.switchToSectionTab('Visual');
+    await this.setSectionTitle(newTitle);
+    await this.saveSectionEditor();
+    await this.sectionShouldBeVisibleOnPage(newTitle);
+  }
+
   async deleteAllTestSections(titlePattern) {
-    // Best-effort cleanup: find and delete any section matching the title pattern.
-    const sections = this.page.locator('[data-section-title], [class*="section"]')
-      .filter({ hasText: titlePattern });
-    const count = await sections.count().catch(() => 0);
-    for (let i = 0; i < count; i++) {
-      const section = sections.first();
-      const deleteBtn = section.locator('button').filter({ hasText: /delete/i }).first();
-      if (await deleteBtn.isVisible().catch(() => false)) {
-        await deleteBtn.click();
-        await this.page.getByRole('button', { name: /^delete$|^confirm$/i }).first().click().catch(() => {});
+    const re = new RegExp(titlePattern, 'i');
+    // Each section card: generic > heading[level=3] + button (options/actions)
+    while (true) {
+      await this.page.waitForTimeout(300);
+      const heading = this.page.getByRole('heading', { level: 3 })
+        .filter({ hasText: re })
+        .first();
+      if (!await heading.isVisible({ timeout: 2000 }).catch(() => false)) break;
+
+      // Button is sibling of the heading's parent div (text container), not of the heading itself
+      const optionsBtn = heading.locator('xpath=../following-sibling::button').first();
+      const clicked = await optionsBtn.click({ timeout: 5000 }).then(() => true).catch(() => false);
+      if (!clicked) break;
+
+      // Delete option in the dropdown menu ("Delete Section")
+      const deleteOption = this.page.getByRole('menuitem', { name: /delete section/i })
+        .or(this.page.getByRole('menuitem', { name: /delete/i }))
+        .or(this.page.getByRole('button', { name: /delete/i }))
+        .first();
+      if (!await deleteOption.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false)) {
+        await this.page.keyboard.press('Escape');
+        break;
       }
+      await deleteOption.click();
+
+      // Confirm deletion dialog
+      const confirmBtn = this.page.getByRole('button', { name: /^delete$/i }).first();
+      await confirmBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+      await confirmBtn.click().catch(() => {});
+      await this.page.waitForTimeout(600);
     }
   }
 
@@ -1681,8 +1721,6 @@ class ProfileBuilderPage {
       const uploadZone = dialog.getByRole('button', { name: /upload media/i }).first();
       const addBtn = dialog.getByRole('button', { name: /^add$/i }).first();
 
-      // Click the visible trigger (upload zone on first image, Add button on subsequent ones)
-      // so that the hidden <input type="file"> appears in the DOM.
       const triggerBtn = (await uploadZone.isVisible({ timeout: 500 }).catch(() => false))
         ? uploadZone
         : addBtn;
@@ -1690,14 +1728,19 @@ class ProfileBuilderPage {
       if (!(await triggerBtn.isVisible({ timeout: 500 }).catch(() => false))) break;
       if (await triggerBtn.isDisabled().catch(() => true)) break;
 
-      // Click to reveal the hidden file input, then set files directly — this bypasses
-      // the native file dialog that Playwright can't control in headless mode.
+      // Intercept the OS file chooser BEFORE clicking — prevents the native dialog from opening.
+      const fileChooserPromise = this.page.waitForEvent('filechooser', { timeout: 5000 });
       await triggerBtn.click();
-      const fileInput = dialog.locator('input[type="file"]').first();
-      await fileInput.waitFor({ state: 'attached', timeout: 8000 });
-      await fileInput.setInputFiles(TEST_IMAGE_PATH);
+      const fileChooser = await fileChooserPromise.catch(() => null);
+      if (fileChooser) {
+        await fileChooser.setFiles(TEST_IMAGE_PATH);
+      } else {
+        // Fallback: no OS dialog was fired — set files directly on the hidden input.
+        const fileInput = dialog.locator('input[type="file"]').first();
+        await fileInput.waitFor({ state: 'attached', timeout: 5000 });
+        await fileInput.setInputFiles(TEST_IMAGE_PATH);
+      }
 
-      // Handle crop dialog — wait up to 3s for it to appear, then save and continue
       const cropDialog = this.page.getByRole('dialog').filter({ hasText: /edit image/i });
       if (await cropDialog.isVisible({ timeout: 3000 }).catch(() => false)) {
         await cropDialog.getByRole('button', { name: /^save$/i }).first().click();
@@ -1755,6 +1798,26 @@ class ProfileBuilderPage {
     await expect(
       dialog.getByText(/enter a valid secure url|invalid url|not a valid url|please enter a valid|invalid link/i).first()
     ).toBeVisible({ timeout: 5000 });
+  }
+
+  async dpUploadProductFileReal() {
+    // Real (un-mocked) upload — used by createAndSaveDigitalProductSection for full E2E flows.
+    // Triggers the actual S3 upload so the section saves and the download link is valid.
+    const dialog = this._dpEditorDialog();
+    const uploadFileBtn = dialog.getByRole('button', { name: /^upload file/i }).first();
+
+    let fileInput = dialog.locator('input[type="file"]').first();
+    const inputAttached = await fileInput.waitFor({ state: 'attached', timeout: 3000 }).then(() => true).catch(() => false);
+    if (!inputAttached) {
+      await uploadFileBtn.waitFor({ state: 'visible', timeout: 5000 });
+      await uploadFileBtn.click();
+      await fileInput.waitFor({ state: 'attached', timeout: 10000 });
+    }
+    await fileInput.setInputFiles(TEST_IMAGE_PATH);
+
+    // Wait for the real upload to finish (S3 PUT + frontend state update)
+    const actionsBtn = dialog.locator('[aria-label="Open file actions"]');
+    await actionsBtn.waitFor({ state: 'attached', timeout: 90000 });
   }
 
   async dpUploadProductFile() {
@@ -2005,6 +2068,7 @@ class ProfileBuilderPage {
       description,
       ctaText,
       productURL,
+      useFileDelivery = false,
     } = options;
 
     await this.visitSections();
@@ -2037,7 +2101,9 @@ class ProfileBuilderPage {
 
     // Tab 3 – Product
     await this.dpTabContentShouldBeVisible('Product');
-    if (productURL) {
+    if (useFileDelivery) {
+      await this.dpUploadProductFileReal();
+    } else if (productURL) {
       await this.dpFillExternalURL(productURL);
     }
     await this.dpSave();

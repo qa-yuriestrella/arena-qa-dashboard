@@ -1,31 +1,28 @@
 const { createBdd } = require('playwright-bdd');
 const { test } = require('../fixtures');
-const { ProfileBuilderPage } = require('../../support/Pages/ProfileBuilderPage');
 
 const { Given, When, Then, After } = createBdd(test);
 
 // ─── Section setup helpers ────────────────────────────────────────────────────
 
-// After each EU-sections test, delete created test sections to keep the account clean.
-After({ tags: '@eupsn-visible or @eupsn-carousel or @eupsn-link' }, async ({ page }) => {
-  const pb = new ProfileBuilderPage(page);
-  await pb.visitSections().catch(() => {});
-  await pb.deleteAllTestSections('E2E EU URL Section').catch(() => {});
-  await pb.deleteAllTestSections('E2E Stack Section').catch(() => {});
-  await pb.deleteAllTestSections('E2E Link Section').catch(() => {});
+After({ tags: '@eupsn-visible or @eupsn-stack or @eupsn-link or @eupsn-horizontal or @eupsn-square or @eupsn-edit' }, async ({ profileBuilderPage }) => {
+  await profileBuilderPage.visitSections().catch(() => {});
+  for (const name of [
+    'E2E EU URL Section', 'E2E Stack Section', 'E2E Link Section',
+    'E2E Horizontal Section', 'E2E Square Section',
+    'E2E Edit Section', 'E2E Edited Section',
+  ]) {
+    await profileBuilderPage.deleteAllTestSections(name).catch(() => {});
+  }
 });
 
-After({ tags: '@eudps-visible or @eudps-landing or @eudps-auth or @eudps-purchase' }, async ({ page }) => {
-  const pb = new ProfileBuilderPage(page);
-  await pb.visitSections().catch(() => {});
-  await pb.deleteAllTestSections('E2E Test Product').catch(() => {});
+After({ tags: '@eudps-visible or @eudps-landing or @eudps-purchase or @eudps-download' }, async ({ profileBuilderPage }) => {
+  await profileBuilderPage.visitSections().catch(() => {});
+  await profileBuilderPage.deleteAllTestSections('E2E Test Product').catch(() => {});
+  await profileBuilderPage.deleteAllTestSections('E2E File Product').catch(() => {});
 });
 
 // ─── Given – section setup in dashboard ──────────────────────────────────────
-
-// Dashboard and EU are on different domains (stg-dash-avatar.arena.im vs dev-avatar.arena.im),
-// so dashboard auth cookies are NOT sent to EU. The user is always anonymous when visiting EU
-// after setting up sections in the dashboard — no cookie clearing needed.
 
 Given('a URL Media section titled {string} with link {string} has been saved in the dashboard',
   async ({ profileBuilderPage }, title, url) => {
@@ -33,9 +30,15 @@ Given('a URL Media section titled {string} with link {string} has been saved in 
   }
 );
 
-Given('a URL Media section in Stack style titled {string} with links {string} and {string} has been saved in the dashboard',
-  async ({ profileBuilderPage }, title, url1, url2) => {
-    await profileBuilderPage.createAndSaveURLMediaSection(title, url1, url2, 'Stack');
+Given('a URL Media section in {string} style titled {string} with link {string} has been saved in the dashboard',
+  async ({ profileBuilderPage }, style, title, url) => {
+    await profileBuilderPage.createAndSaveURLMediaSection(title, url, null, style);
+  }
+);
+
+Given('a URL Media section in {string} style titled {string} with links {string} and {string} has been saved in the dashboard',
+  async ({ profileBuilderPage }, style, title, url1, url2) => {
+    await profileBuilderPage.createAndSaveURLMediaSection(title, url1, url2, style);
   }
 );
 
@@ -53,6 +56,20 @@ Given('a Digital Product section titled {string} has been saved in the dashboard
   }
 );
 
+Given('a Digital Product section with file delivery titled {string} has been saved in the dashboard',
+  async ({ profileBuilderPage }, title) => {
+    await profileBuilderPage.createAndSaveDigitalProductSection({
+      title,
+      price: '4.99',
+      slug: 'e2e-file-product',
+      landingTitle: `${title} - Landing Page`,
+      description: 'This is an automated E2E test product for file download validation.',
+      ctaText: 'Buy Now!',
+      useFileDelivery: true,
+    });
+  }
+);
+
 // ─── When – navigation ────────────────────────────────────────────────────────
 
 When('I navigate to the end user page', async ({ endUserPage }) => {
@@ -62,6 +79,14 @@ When('I navigate to the end user page', async ({ endUserPage }) => {
 When('I navigate to the end user page as an unauthenticated user', async ({ endUserPage }) => {
   await endUserPage.visit();
 });
+
+// ─── When – section editing ───────────────────────────────────────────────────
+
+When('the section {string} is edited with title {string} in the dashboard',
+  async ({ profileBuilderPage }, currentTitle, newTitle) => {
+    await profileBuilderPage.editSectionTitle(currentTitle, newTitle);
+  }
+);
 
 // ─── Then – URL Media section on EU ──────────────────────────────────────────
 
@@ -77,8 +102,28 @@ When('I click the first section link card', async ({ endUserPage }) => {
   await endUserPage.clickFirstSectionLinkCard();
 });
 
+When('I click the first link card in section {string}', async ({ endUserPage }, sectionTitle) => {
+  await endUserPage.clickFirstLinkCardInSection(sectionTitle);
+});
+
 Then('a new tab should open with a URL matching {string}', async ({ endUserPage }, urlPattern) => {
   await endUserPage.newTabShouldHaveURL(urlPattern);
+});
+
+Then('the first card in section {string} should have a landscape aspect ratio', async ({ endUserPage }, sectionTitle) => {
+  await endUserPage.firstCardInSectionShouldHaveAspectRatio(sectionTitle, 'landscape');
+});
+
+Then('the first card in section {string} should have a square aspect ratio', async ({ endUserPage }, sectionTitle) => {
+  await endUserPage.firstCardInSectionShouldHaveAspectRatio(sectionTitle, 'square');
+});
+
+Then('the first card in section {string} should have a portrait aspect ratio', async ({ endUserPage }, sectionTitle) => {
+  await endUserPage.firstCardInSectionShouldHaveAspectRatio(sectionTitle, 'portrait');
+});
+
+Then('the section should show a carousel', async ({ endUserPage }) => {
+  await endUserPage.sectionShouldShowCarousel();
 });
 
 // ─── Then – Digital Product card on EU ───────────────────────────────────────
@@ -99,10 +144,6 @@ When('I click the product card for {string}', async ({ endUserPage }, title) => 
 
 Then('the product landing page should be visible', async ({ endUserPage }) => {
   await endUserPage.productLandingPageShouldBeVisible();
-});
-
-Then('the landing page should show an image carousel', async ({ endUserPage }) => {
-  await endUserPage.landingPageShouldHaveCarousel();
 });
 
 Then('the landing page should show the product description', async ({ endUserPage }) => {
@@ -169,4 +210,8 @@ When('I click {string} on the product card for {string}', async ({ endUserPage }
 
 Then('the product should be delivered', async ({ endUserPage }) => {
   await endUserPage.productShouldBeDelivered();
+});
+
+Then('the product file should be downloaded', async ({ endUserPage }) => {
+  await endUserPage.productFileShouldBeDownloaded();
 });
