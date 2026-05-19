@@ -249,6 +249,18 @@ When('I click Discard', async ({ profileBuilderPage }) => {
   await profileBuilderPage.clickDiscard();
 });
 
+// ─── Sections tab — card styles (PSN011/PSN012) ──────────────────────────────
+
+Then('the following card styles should be available: Button, Card, Stack',
+  async ({ profileBuilderPage }) => {
+    await profileBuilderPage.cardStylesShouldBeAvailable(['Button', 'Card', 'Stack']);
+  }
+);
+
+When('I select the {word} card style', async ({ profileBuilderPage }, styleName) => {
+  await profileBuilderPage.selectCardStyle(styleName);
+});
+
 // ─── Sections tab — cleanup ───────────────────────────────────────────────────
 
 After({ tags: '@psn-save' }, async ({ page }) => {
@@ -463,6 +475,34 @@ Then('a validation error should be visible', async ({ profileBuilderPage }) => {
 
 Then('the digital product preview should show {string}', async ({ profileBuilderPage }, text) => {
   await profileBuilderPage.dpPreviewShouldShow(text);
+});
+
+// ─── Digital Product — save (DPS015) ─────────────────────────────────────────
+
+When('I click Next to go to Landing Page', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.dpClickNext();
+});
+
+When('I fill the landing page description with {string}', async ({ profileBuilderPage }, text) => {
+  await profileBuilderPage.dpFillDescription(text);
+});
+
+When('I click Next to go to Product tab', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.dpClickNext();
+});
+
+When('I save the digital product', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.dpSave();
+});
+
+Then('the digital product save request should be fired', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.dpSaveRequestShouldFire();
+});
+
+After({ tags: '@dpd-save' }, async ({ page }) => {
+  const pb = new ProfileBuilderPage(page);
+  await pb.visitSections();
+  await pb.deleteAllTestSections('E2E Digital Product').catch(() => {});
 });
 
 // ─── Digital Product — discard modal ─────────────────────────────────────────

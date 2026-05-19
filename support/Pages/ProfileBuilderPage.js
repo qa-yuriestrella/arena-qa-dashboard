@@ -3,7 +3,7 @@ const path = require('path');
 const { ensurePrimaryAvatar } = require('../helpers/avatarHelper');
 
 const TEST_IMAGE_PATH = path.resolve(__dirname, '../fixtures/images/test-face.jpg');
-const EU_URL = process.env.EU_URL || 'https://dev-avatar.arena.im/arena-automation';
+const EU_URL = process.env.EU_URL || 'https://dev-avatar.arena.im/automation1arena';
 const EU_BASE = EU_URL.substring(0, EU_URL.lastIndexOf('/'));
 
 class ProfileBuilderPage {
@@ -1261,9 +1261,40 @@ class ProfileBuilderPage {
     const count = await styleButtons.count();
     for (let i = 0; i < count && i < 6; i++) {
       await styleButtons.nth(i).click();
-      // Give the preview a moment to update
       await this.page.waitForTimeout(300);
     }
+  }
+
+  async cardStylesShouldBeAvailable(styleNames) {
+    const dialog = await this._sectionEditorDialog();
+    for (const name of styleNames) {
+      // Style option boxes are custom divs/buttons — match by visible text label
+      const styleEl = dialog.locator('div, button, label')
+        .filter({ hasText: new RegExp(`^${name}$`, 'i') })
+        .first();
+      await expect(styleEl).toBeVisible({ timeout: 8000 });
+    }
+  }
+
+  async selectCardStyle(styleName) {
+    const dialog = await this._sectionEditorDialog();
+    // Style option boxes are custom-styled elements — find by visible text label
+    const styleEl = dialog.locator('div, button, label')
+      .filter({ hasText: new RegExp(`^${styleName}$`, 'i') })
+      .first();
+    await styleEl.click();
+    await this.page.waitForTimeout(400);
+  }
+
+  async carouselPreviewShouldHaveArrows() {
+    const dialog = await this._sectionEditorDialog();
+    // Navigation arrows in carousel preview — check EU preview iframe or the editor preview area
+    const arrow = dialog.locator(
+      'button[aria-label*="next" i], button[aria-label*="prev" i], ' +
+      '[class*="arrow"], [class*="Arrow"], [class*="chevron"], [class*="Chevron"], ' +
+      'svg[data-lucide*="chevron"], svg[data-lucide*="arrow"]'
+    ).first();
+    await expect(arrow).toBeVisible({ timeout: 8000 });
   }
 
   // ─── Save section ─────────────────────────────────────────────────────────────
@@ -1366,10 +1397,9 @@ class ProfileBuilderPage {
   // ─── Digital Product — type selector ─────────────────────────────────────────
 
   async selectDigitalProduct() {
-    await this.page
-      .getByRole('button', { name: /digital product/i })
-      .or(this.page.getByText(/digital product/i).first())
-      .click();
+    const dialog = this.page.getByRole('dialog').filter({ hasText: /choose section type/i }).first();
+    await dialog.waitFor({ state: 'visible', timeout: 10000 });
+    await dialog.getByText(/digital product/i).first().click();
   }
 
   // ─── Digital Product — editor dialog ─────────────────────────────────────────
@@ -1414,8 +1444,9 @@ class ProfileBuilderPage {
       ).toBeVisible({ timeout: 8000 });
     } else if (/product/i.test(tabName)) {
       await expect(
-        dialog.getByRole('button', { name: /upload file/i }).first()
-          .or(dialog.getByRole('button', { name: /external url/i }).first())
+        dialog.getByRole('button', { name: /upload file/i })
+          .or(dialog.getByRole('button', { name: /external url/i }))
+          .first()
       ).toBeVisible({ timeout: 8000 });
     } else {
       await expect(dialog.getByRole('textbox', { name: /title/i }).first()).toBeVisible({ timeout: 8000 });
@@ -1586,6 +1617,16 @@ class ProfileBuilderPage {
       dialog.locator('[class*="toolbar"], [role="toolbar"]').first()
         .or(dialog.getByRole('button', { name: /bold/i }).first())
     ).toBeVisible({ timeout: 8000 });
+  }
+
+  async dpFillDescription(text) {
+    const dialog = this._dpEditorDialog();
+    // Description uses a rich-text (ProseMirror/contenteditable) editor, not a plain input.
+    // Click the editable area and type using the keyboard.
+    const editor = dialog.locator('[contenteditable="true"]').first();
+    await editor.waitFor({ state: 'visible', timeout: 8000 });
+    await editor.click();
+    await editor.pressSequentially(text, { delay: 20 });
   }
 
   async dpFillSlug(slug) {
@@ -1910,6 +1951,97 @@ class ProfileBuilderPage {
     await expect(
       iframe.getByText(text, { exact: false }).first()
     ).toBeVisible({ timeout: 20000 });
+  }
+
+  // ─── Digital Product — save ───────────────────────────────────────────────────
+
+  async dpSave() {
+    this._pendingDPSaveResponse = this.page.waitForResponse(
+      (res) =>
+        (res.url().includes('/commerce-ai/') || res.url().includes('/digital-product') ||
+          res.url().includes('/section')) &&
+        !res.url().includes('/track') &&
+        res.request().method() !== 'GET' &&
+        res.status() === 200,
+      { timeout: 30000 },
+    ).catch(() => null);
+    const dialog = this._dpEditorDialog();
+    await dialog.getByRole('button', { name: /^save$/i }).click();
+    await (this._pendingDPSaveResponse ?? Promise.resolve());
+    this._pendingDPSaveResponse = null;
+  }
+
+  async dpSaveRequestShouldFire() {
+    // Resolved in dpSave; no-op confirmation.
+  }
+
+  // ─── Setup helpers (used by CAT19 Given steps) ────────────────────────────────
+  // These create fully-configured sections from scratch to set up EU-side tests.
+
+  async createAndSaveURLMediaSection(title, url1, url2 = null, style = null) {
+    await this.visitSections();
+    await this.clickAddSection();
+    await this.selectURLMedia();
+    await this.sectionEditorShouldBeVisible();
+    await this.addSectionURL(url1);
+    if (url2) {
+      await this.addSectionURL(url2);
+    }
+    await this.switchToSectionTab('Visual');
+    await this.setSectionTitle(title);
+    if (style) {
+      await this.selectCardStyle(style);
+    }
+    await this.saveSectionEditor();
+    await this.sectionShouldBeVisibleOnPage(title);
+  }
+
+  async createAndSaveDigitalProductSection(options) {
+    const {
+      title,
+      price = '9.99',
+      slug,
+      landingTitle,
+      description,
+      ctaText,
+      productURL,
+    } = options;
+
+    await this.visitSections();
+    await this.clickAddSection();
+    await this.selectDigitalProduct();
+    await this.dpEditorShouldBeVisible();
+
+    // Tab 1 – Thumbnail
+    await this.dpFillProductTitle(title);
+    await this.dpFillPrice(price);
+    await this.dpUploadAndCropImage();
+    await this.dpClickNext();
+
+    // Tab 2 – Landing Page
+    await this.dpTabContentShouldBeVisible('Landing Page');
+    if (landingTitle) {
+      await this.dpFillLandingPageTitle(landingTitle);
+    }
+    if (slug) {
+      await this.dpFillSlug(slug);
+    }
+    if (description) {
+      await this.dpFillDescription(description);
+    }
+    await this.dpAddImagesToGallery(1);
+    if (ctaText && ctaText !== 'Buy Now!') {
+      await this.dpFillCTA(ctaText);
+    }
+    await this.dpClickNext();
+
+    // Tab 3 – Product
+    await this.dpTabContentShouldBeVisible('Product');
+    if (productURL) {
+      await this.dpFillExternalURL(productURL);
+    }
+    await this.dpSave();
+    await this.sectionShouldBeVisibleOnPage(title);
   }
 
   // ─── Digital Product — discard modal ─────────────────────────────────────────

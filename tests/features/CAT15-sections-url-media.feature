@@ -115,6 +115,28 @@ Feature: CAT15 - Profile Builder – Sections Tab
     Then the section save request should be fired
     And the section "E2E Test Section" should be visible on the sections page
 
+  # ─── Visual tab – card styles ────────────────────────────────────────────────
+
+  @psn-visual
+  Scenario: PSN011 - Visual tab offers Button, Card, and Stack display styles
+    Given the URL and Media section editor is open on the URL tab
+    When I add the section URL "https://myavatar.ai/"
+    And I switch to the Visual tab
+    Then the following card styles should be available: Button, Card, Stack
+
+  @psn-visual
+  Scenario: PSN012 - Selecting each card style updates the section preview
+    Given the URL and Media section editor is open on the URL tab
+    When I add the section URL "https://myavatar.ai/"
+    And I add the section URL "https://arena.im/"
+    And I switch to the Visual tab
+    And I select the Stack card style
+    Then the section editor modal should be visible
+    When I select the Button card style
+    Then the section editor modal should be visible
+    When I select the Card card style
+    Then the section editor modal should be visible
+
   # ─── Discard modal ───────────────────────────────────────────────────────────
 
   @psn-discard
