@@ -358,6 +358,98 @@ class ProfileBuilderPage {
     await this.page.getByRole('button', { name: /^cancel$/i }).click();
   }
 
+  // ─── PBG010 – Share URL reactive update ──────────────────────────────────────
+
+  _shareUrlSpan() {
+    // Right-panel header shows the full avatar public URL in a truncated span
+    return this.page.locator('span').filter({ hasText: /https:\/\/.*arena\.im\// }).first();
+  }
+
+  async getShareUrlText() {
+    return (await this._shareUrlSpan().innerText({ timeout: 5000 }).catch(() => '')).trim();
+  }
+
+  async updateSlugToUniqueValue() {
+    this._reactiveTestOldSlug = await this.page.locator('#slug').inputValue();
+    const newSlug = `e2ereact${Date.now() % 100000}`;
+    this._reactiveTestNewSlug = newSlug;
+    await this.fillSlug(newSlug);
+  }
+
+  async saveAndReturnToProfileBuilder() {
+    await this.clickSave();
+    await (this._pendingSaveResponse ?? Promise.resolve());
+    this._pendingSaveResponse = null;
+
+    // A slug change triggers a client-side redirect to /knowledge-base. Navigate back
+    // without a hard refresh (page.goto keeps the SPA session alive, no cache bypass).
+    await this.page.waitForTimeout(2000);
+    if (!this.page.url().includes('/profile-builder')) {
+      await this.page.goto('/profile-builder', { waitUntil: 'load' });
+      await this.page.getByText('Set the basic information of your profile').waitFor({ timeout: 15000 });
+      await this.page.waitForTimeout(1000);
+    }
+  }
+
+  async shareUrlShouldContainNewSlug() {
+    await expect(this._shareUrlSpan()).toContainText(this._reactiveTestNewSlug, { timeout: 8000 });
+  }
+
+  async shareUrlShouldNotContainOldSlug() {
+    const text = await this.getShareUrlText();
+    expect(text).not.toContain(this._reactiveTestOldSlug);
+  }
+
+  async restoreSlugAfterReactiveTest() {
+    if (!this._reactiveTestOldSlug || this._reactiveTestOldSlug === this._reactiveTestNewSlug) return;
+    await this.visitGeneral();
+    await this.fillSlug(this._reactiveTestOldSlug);
+    await this.clickSave();
+    await (this._pendingSaveResponse ?? Promise.resolve());
+    this._pendingSaveResponse = null;
+    await this.page.waitForTimeout(3000);
+  }
+
+  // ─── PBG011 – Title 32-char limit ────────────────────────────────────────────
+
+  async fillTitleWith40Chars() {
+    const input = this.page.locator('#title');
+    await input.clear();
+    // pressSequentially triggers individual keydown/keypress/keyup events so any
+    // JavaScript character-limit handler (maxLength enforcement via React) is exercised.
+    await input.pressSequentially('A'.repeat(40), { delay: 10 });
+    await input.blur();
+  }
+
+  async titleValueShouldBeLimitedTo32Chars() {
+    const value = await this.page.locator('#title').inputValue();
+    expect(
+      value.length,
+      `Title field should be capped at 32 chars but accepted ${value.length}`,
+    ).toBeLessThanOrEqual(32);
+  }
+
+  async titlePreviewShouldNotOverflowLayout() {
+    // The right-panel iframe shows the avatar name — verify it stays within the viewport
+    const iframeEl = this.page.locator('iframe').first();
+    const iframeVisible = await iframeEl.isVisible({ timeout: 3000 }).catch(() => false);
+    if (!iframeVisible) return;
+
+    const frame = this.page.frameLocator('iframe').first();
+    const nameEl = frame.locator('h1, h2, [class*="name"], [class*="title"]').first();
+    const nameVisible = await nameEl.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!nameVisible) return;
+
+    const nameBox = await nameEl.boundingBox().catch(() => null);
+    const iframeBox = await iframeEl.boundingBox().catch(() => null);
+    if (nameBox && iframeBox) {
+      expect(
+        nameBox.x + nameBox.width,
+        'Avatar title should not overflow the preview iframe width',
+      ).toBeLessThanOrEqual(iframeBox.x + iframeBox.width + 5);
+    }
+  }
+
   // ─── Headshot tab — gallery ───────────────────────────────────────────────────
 
   async addNewButtonShouldBeVisible() {

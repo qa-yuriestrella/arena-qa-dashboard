@@ -184,6 +184,48 @@ After({ tags: '@pbg-eu' }, async ({ page }) => {
   _cleanupOriginals = { title: null, headline: null, slug: null };
 });
 
+// ─── PBG010 – Share URL reactive update ──────────────────────────────────────
+
+When('I update the slug to a new unique value and save', async ({ profileBuilderPage, page }) => {
+  _cleanupOriginals.slug = await page.locator('#slug').inputValue();
+  _cleanupOriginals.title = await page.locator('#title').inputValue();
+  _cleanupOriginals.headline = await page.locator('#bio').inputValue();
+  await profileBuilderPage.updateSlugToUniqueValue();
+  await profileBuilderPage.saveAndReturnToProfileBuilder();
+});
+
+Then('the share URL should contain the new slug', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.shareUrlShouldContainNewSlug();
+});
+
+Then('the share URL should not show the old slug', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.shareUrlShouldNotContainOldSlug();
+});
+
+After({ tags: '@pbg-reactive-slug' }, async ({ page }) => {
+  const pb = new ProfileBuilderPage(page);
+  pb._originalTitle = _cleanupOriginals.title;
+  pb._originalHeadline = _cleanupOriginals.headline;
+  pb._originalSlug = _cleanupOriginals.slug;
+  await pb.restoreSlugAfterReactiveTest();
+  await pb.restoreOriginalProfileSettings();
+  _cleanupOriginals = { title: null, headline: null, slug: null };
+});
+
+// ─── PBG011 – Title 32-character limit ───────────────────────────────────────
+
+When('I fill the title field with a 40-character string', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.fillTitleWith40Chars();
+});
+
+Then('the title value should be capped at 32 characters', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.titleValueShouldBeLimitedTo32Chars();
+});
+
+Then('the avatar title in the preview should not overflow the layout', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.titlePreviewShouldNotOverflowLayout();
+});
+
 // ─── Headshot tab — gallery ───────────────────────────────────────────────────
 
 Then('the headshot gallery should be visible', async ({ profileBuilderPage }) => {
