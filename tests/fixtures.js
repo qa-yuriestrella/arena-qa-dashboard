@@ -12,6 +12,8 @@ const { AudiencePage } = require('../support/Pages/AudiencePage');
 const { AvatarManagementPage } = require('../support/Pages/AvatarManagementPage');
 const { SettingsTeamPage } = require('../support/Pages/SettingsTeamPage');
 const { SettingsInvitePage } = require('../support/Pages/SettingsInvitePage');
+const { SettingsMembershipPage } = require('../support/Pages/SettingsMembershipPage');
+const { SettingsPaymentsPage } = require('../support/Pages/SettingsPaymentsPage');
 
 const test = playwrightBdd.test.extend({
   signupPage: async ({ page }, use) => {
@@ -61,6 +63,12 @@ const test = playwrightBdd.test.extend({
   },
   settingsInvitePage: async ({ authenticatedPage }, use) => {
     await use(new SettingsInvitePage(authenticatedPage));
+  },
+  settingsMembershipPage: async ({ authenticatedPage }, use) => {
+    await use(new SettingsMembershipPage(authenticatedPage));
+  },
+  settingsPaymentsPage: async ({ authenticatedPage }, use) => {
+    await use(new SettingsPaymentsPage(authenticatedPage));
   },
 });
 
