@@ -1,67 +1,6 @@
 @settings-billing
 Feature: CAT22 - Settings Billing - Plans & Subscriptions
 
-  # =============================================================================
-  # CONTEXT
-  # =============================================================================
-  # URL: https://stg-dash-avatar.arena.im/settings → Billing tab (nav index 4)
-  #
-  # WHAT THIS CAT COVERS:
-  #   Settings > Billing: three tabs — Plans & Usage, Payment Method, Invoices history.
-  #   Focus: Plans & Usage tab and the full plan management lifecycle.
-  #
-  #   Plans available: Starter (US$ 29), Professional (US$ 99), Business (US$ 299)
-  #   Test account starts on Starter plan.
-  #
-  #   Plans & Usage tab shows:
-  #     - Plan Information card: Next Renewal, Current Plan, Quota Limits, Usage
-  #     - "Manage Plan" button → navigates to #compare-plans view
-  #     - 3-dot "More plan options" menu → Cancel Plan option
-  #
-  #   Compare Plans view (#compare-plans):
-  #     - 3 plan cards with "Your Current Plan" (disabled) or "Choose this plan"
-  #     - Clicking "Choose this plan" opens a Subscription Payment modal
-  #
-  #   Upgrade behaviour (e.g. Starter → Professional):
-  #     - Modal: "Subscription Payment" with plan name, price, credit card info
-  #     - Buttons: "Change Credit Card" and "Confirm Upgrade"
-  #     - After confirm: plan changes immediately, redirected to Plans & Usage
-  #
-  #   Downgrade behaviour (e.g. Professional → Starter):
-  #     - Modal: shows "You're downgrading your plan." warning, plan comparison
-  #     - Buttons: "Keep <current plan>" (closes modal) and "Confirm Downgrade"
-  #     - After confirm: plan is SCHEDULED for end of cycle (not immediate)
-  #     - Plans & Usage shows banner: "Your downgrade to X is scheduled for [date]"
-  #       with "Cancel downgrade" button
-  #     - Compare Plans: target plan shows "Downgrade Scheduled" (disabled),
-  #       current plan shows "Your current plan" + "Active until [date]",
-  #       all buttons disabled
-  #
-  #   Cancel Downgrade:
-  #     - Clicking "Cancel downgrade" fires request → shows confirmation modal ([role="dialog"])
-  #     - Modal has "Done" button; after closing, downgrade banner disappears
-  #
-  #   Cancel Plan (3-dot menu → Cancel Plan):
-  #     - Modal [role="alertdialog"]: "Keep my plan" + "Yes, cancel my plan"
-  #     - After cancel: banner on Plans & Usage with "Keep my plan" button
-  #     - Compare Plans: current plan shows "Active until [date]", all buttons disabled
-  #     - No informational modal on Plans & Usage for keep plan
-  #
-  #   Keep Plan (reverse cancel):
-  #     - Clicking "Keep my plan" fires request immediately (no modal)
-  #     - Banner disappears, subscription restored to active
-  #
-  # PAGE OBJECT: support/Pages/SettingsBillingPage.js
-  #
-  # STATE DEPENDENCY (run in order for full coverage):
-  #   BIL001 — always runnable (read-only)
-  #   BIL002 — requires Starter; ends on Professional
-  #   BIL003 — requires Professional active; ends on Professional + downgrade scheduled
-  #   BIL004 — requires downgrade scheduled; ends on Professional active
-  #   BIL005 — requires Professional active; ends on Professional + cancellation scheduled
-  #   BIL006 — requires cancellation scheduled; ends on Professional active
-  #   To re-run from BIL002: manually downgrade to Starter (wait for billing cycle reset).
-  # =============================================================================
 
   # ─── Plans & Usage overview ───────────────────────────────────────────────────
 
@@ -155,3 +94,45 @@ Feature: CAT22 - Settings Billing - Plans & Subscriptions
     When I click Keep my plan to restore the subscription
     Then the cancellation banner should disappear
     And the plan should be active with no pending cancellation
+
+  # ─── Payment Method overview ─────────────────────────────────────────────────
+
+
+  @billing-payment-method
+  Scenario: BIL007 - Payment Method tab displays current credit card information
+    Given I am on the Settings Billing page
+    When I navigate to the Payment Method tab
+    Then the Payment Method tab should be active
+    And the current credit card section should be visible
+    And the card brand and last four digits should be visible
+    And the card expiry date should be visible
+    And the Change Credit Card button should be visible
+
+  @billing-change-cc
+  Scenario: BIL008 - Change Credit Card updates the payment method successfully
+    Given I am on the Settings Billing Payment Method tab
+    When I click the Change Credit Card button
+    Then the Update Payment Method modal should open with Name, Email, and card fields
+
+    When I fill the credit card form with name "Test Automation", card "4111111111111111", expiry "12/29" and CVV "737"
+    And I save the new payment method
+    Then the Chargebee tokenization and Arena credit card update should both succeed
+    And the modal should close and the current credit card section should remain visible
+
+  # ─── Invoices history (TODO) ─────────────────────────────────────────────────
+
+  # TODO (BIL009+): The Invoices history tab lists all transactions with invoice number,
+  # date, amount, and a PDF download link.
+  # To test this properly we need an account that has at least one completed transaction
+  # (e.g. an upgrade from Starter → Professional), so there is a real invoice to verify.
+  #
+  # The plan is to reuse the same fresh-account signup flow pending from BIL002:
+  # once João Lenon (backend) provides the env vars for staging
+  #   (GOOGLE_IDENTITY_URL, LINKINBIO_SIGNUP_URL, CHARGEBEE_SITE, CHARGEBEE_API_KEY,
+  #    ARENA_AUTH_URL, ARENA_BILLING_API_URL)
+  # we will implement scripts/createStarterAccount.js, perform a programmatic upgrade
+  # to Professional, and then verify the resulting invoice appears in the history tab
+  # with a valid PDF link.
+  # Scenarios planned:
+  #   BIL009 - Invoices history tab shows at least one invoice after an upgrade
+  #   BIL010 - PDF download link for an invoice resolves to a valid document

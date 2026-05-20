@@ -197,3 +197,65 @@ Then('the cancellation banner should disappear', async ({ settingsBillingPage })
 Then('the plan should be active with no pending cancellation', async ({ settingsBillingPage }) => {
   await settingsBillingPage.planInformationShouldBeVisible();
 });
+
+// ─── BIL007 – Payment Method overview ────────────────────────────────────────
+
+Given('I am on the Settings Billing Payment Method tab', async ({ settingsBillingPage }) => {
+  await settingsBillingPage.visitPaymentMethod();
+});
+
+When('I navigate to the Payment Method tab', async ({ settingsBillingPage }) => {
+  await settingsBillingPage.navigateToPaymentMethodTab();
+});
+
+Then('the Payment Method tab should be active', async ({ settingsBillingPage }) => {
+  await settingsBillingPage.paymentMethodTabShouldBeActive();
+});
+
+Then('the current credit card section should be visible', async ({ settingsBillingPage }) => {
+  await settingsBillingPage.currentCreditCardSectionShouldBeVisible();
+});
+
+Then('the card brand and last four digits should be visible', async ({ settingsBillingPage }) => {
+  await settingsBillingPage.cardBrandAndLastFourShouldBeVisible();
+});
+
+Then('the card expiry date should be visible', async ({ settingsBillingPage }) => {
+  await settingsBillingPage.cardExpiryDateShouldBeVisible();
+});
+
+Then('the Change Credit Card button should be visible', async ({ settingsBillingPage }) => {
+  await settingsBillingPage.changeCreditCardButtonShouldBeVisible();
+});
+
+// ─── BIL008 – Change Credit Card ─────────────────────────────────────────────
+
+When('I click the Change Credit Card button', async ({ settingsBillingPage }) => {
+  await settingsBillingPage.clickChangeCreditCard();
+});
+
+Then('the Update Payment Method modal should open with Name, Email, and card fields', async ({ settingsBillingPage }) => {
+  await settingsBillingPage.changeCreditCardModalShouldShowFields();
+});
+
+When('I fill the credit card form with name {string}, card {string}, expiry {string} and CVV {string}', async ({ settingsBillingPage }, name, card, expiry, cvv) => {
+  await settingsBillingPage.fillCreditCardForm({
+    name,
+    email: process.env.TEST_USER_EMAIL,
+    cardNumber: card,
+    expiry,
+    cvv,
+  });
+});
+
+When('I save the new payment method', async ({ settingsBillingPage }) => {
+  await settingsBillingPage.saveNewPaymentMethod();
+});
+
+Then('the Chargebee tokenization and Arena credit card update should both succeed', async () => {
+  // Validation is performed inside saveNewPaymentMethod() via waitForResponse assertions
+});
+
+Then('the modal should close and the current credit card section should remain visible', async ({ settingsBillingPage }) => {
+  await settingsBillingPage.currentCreditCardSectionShouldBeVisible();
+});

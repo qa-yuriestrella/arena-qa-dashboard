@@ -418,6 +418,119 @@ class SettingsBillingPage {
       this.page.locator('#plans button', { hasText: 'Keep my plan' })
     ).not.toBeVisible({ timeout: 5000 });
   }
+
+  // ─── Payment Method tab navigation ───────────────────────────────────────────
+
+  async navigateToPaymentMethodTab() {
+    await this.page.locator('[role="tab"]', { hasText: /payment method/i }).click();
+    await this.page.locator('#payment').waitFor({ state: 'visible', timeout: 8000 });
+    await this.page.waitForTimeout(500);
+  }
+
+  async visitPaymentMethod() {
+    await this.visit();
+    await this.navigateToPaymentMethodTab();
+  }
+
+  // ─── Payment Method tab assertions ───────────────────────────────────────────
+
+  async paymentMethodTabShouldBeActive() {
+    await expect(
+      this.page.locator('[id$="-trigger-payment"]')
+    ).toHaveAttribute('data-state', 'active', { timeout: 8000 });
+  }
+
+  async currentCreditCardSectionShouldBeVisible() {
+    await expect(
+      this.page.locator('#payment p', { hasText: 'Your Current Credit Card' })
+    ).toBeVisible({ timeout: 8000 });
+  }
+
+  async cardBrandAndLastFourShouldBeVisible() {
+    // The card brand+last4 cell: "visa **** 1111" (first-letter capitalized via CSS)
+    await expect(
+      this.page.locator('#payment div.font-semibold').first()
+    ).toBeVisible({ timeout: 5000 });
+  }
+
+  async cardExpiryDateShouldBeVisible() {
+    await expect(
+      this.page.locator('#payment div', { hasText: /^Expiration:/ })
+    ).toBeVisible({ timeout: 5000 });
+  }
+
+  async changeCreditCardButtonShouldBeVisible() {
+    await expect(
+      this.page.locator('#payment button', { hasText: 'Change Credit Card' })
+    ).toBeVisible({ timeout: 5000 });
+  }
+
+  // ─── Change Credit Card modal ─────────────────────────────────────────────────
+
+  async clickChangeCreditCard() {
+    await this.page.locator('#payment button', { hasText: 'Change Credit Card' }).click();
+    await this.page.locator(MODAL).waitFor({ state: 'visible', timeout: 8000 });
+    await this.page.waitForTimeout(1000);
+  }
+
+  async changeCreditCardModalShouldShowFields() {
+    const modal = this.page.locator(MODAL);
+    await expect(modal).toBeVisible({ timeout: 8000 });
+    await expect(modal.locator('h2', { hasText: 'Update Payment Method' })).toBeVisible({ timeout: 5000 });
+    await expect(modal.locator('#name')).toBeVisible({ timeout: 5000 });
+    await expect(modal.locator('#email')).toBeVisible({ timeout: 5000 });
+    // Card number iframe
+    await expect(this.page.locator('iframe[name="cb-component-number-0"]')).toBeVisible({ timeout: 8000 });
+    // Expiry iframe
+    await expect(this.page.locator('iframe[name="cb-component-expiry-1"]')).toBeVisible({ timeout: 5000 });
+    // CVV iframe
+    await expect(this.page.locator('iframe[name="cb-component-cvv-2"]')).toBeVisible({ timeout: 5000 });
+    await expect(modal.locator('button[type="submit"]', { hasText: 'Save' })).toBeVisible({ timeout: 5000 });
+  }
+
+  async fillCreditCardForm({ name, email, cardNumber, expiry, cvv }) {
+    const modal = this.page.locator(MODAL);
+    await modal.locator('#name').fill(name);
+    await modal.locator('#email').fill(email);
+
+    const numberFrame = this.page.frameLocator('iframe[name="cb-component-number-0"]');
+    await numberFrame.locator('input[type="tel"]').first().fill(cardNumber);
+
+    const expiryFrame = this.page.frameLocator('iframe[name="cb-component-expiry-1"]');
+    await expiryFrame.locator('input[type="tel"]').first().fill(expiry);
+
+    const cvvFrame = this.page.frameLocator('iframe[name="cb-component-cvv-2"]');
+    await cvvFrame.locator('input[type="tel"]').first().fill(cvv);
+
+    await this.page.waitForTimeout(500);
+  }
+
+  async saveNewPaymentMethod() {
+    // 1. Chargebee tokenizes the card
+    const tokenPromise = this.page.waitForResponse(
+      r => r.status() === 200 && /chargebee\.com\/api\/js\/v2\/tokens\/create_for_card/.test(r.url()),
+      { timeout: 30000 }
+    );
+    // 2. Arena billing updates the credit card record
+    const updatePromise = this.page.waitForResponse(
+      r => r.status() === 200 && /billing\/customers\/.*\/credit-card/.test(r.url()) && r.request().method() === 'PUT',
+      { timeout: 30000 }
+    );
+
+    await this.page.locator(MODAL).locator('button[type="submit"]', { hasText: 'Save' }).click();
+
+    const tokenResp = await tokenPromise;
+    const tokenBody = await tokenResp.json();
+    expect(tokenBody?.token?.status, 'Chargebee token should have status "new"').toBe('new');
+    expect(tokenBody?.token?.id, 'Chargebee token id should be present').toBeTruthy();
+
+    const updateResp = await updatePromise;
+    const updateBody = await updateResp.json();
+    expect(updateBody?.customer?.creditCardBrand, 'credit-card update should return brand').toBeTruthy();
+    expect(updateBody?.customer?.creditCardLast4, 'credit-card update should return last4').toBeTruthy();
+
+    await expect(this.page.locator(MODAL)).not.toBeVisible({ timeout: 15000 });
+  }
 }
 
 module.exports = { SettingsBillingPage };
