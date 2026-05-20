@@ -226,8 +226,33 @@ After({ tags: '@pbg-reactive-slug' }, async ({ page }) => {
 
 // ─── PBG011 – Title 32-character limit ───────────────────────────────────────
 
-When('I fill the title field with a 40-character string', async ({ profileBuilderPage }) => {
+When('I fill the title field with a 40-character string', async ({ profileBuilderPage, page }) => {
+  _cleanupOriginals.title = await page.locator('#title').inputValue();
+  _cleanupOriginals.headline = await page.locator('#bio').inputValue();
   await profileBuilderPage.fillTitleWith40Chars();
+});
+
+After({ tags: '@pbg-char-limits' }, async ({ page }) => {
+  if (_cleanupOriginals.title === null) return;
+  try {
+    const pb = new ProfileBuilderPage(page);
+    await pb.visitGeneral();
+    await pb.fillTitle(_cleanupOriginals.title);
+    await pb.fillHeadline(_cleanupOriginals.headline || '');
+    const saveBtn = page.getByRole('button', { name: /^save$/i }).first();
+    const isEnabled = await saveBtn.isEnabled({ timeout: 3000 }).catch(() => false);
+    if (isEnabled) {
+      await saveBtn.click();
+      await page.waitForFunction(() => {
+        const btns = [...document.querySelectorAll('button')].filter(
+          (b) => /^save$/i.test((b.textContent || '').trim()),
+        );
+        return btns.length === 0 || btns.every((b) => b.disabled);
+      }, { timeout: 10000 }).catch(() => {});
+    }
+  } finally {
+    _cleanupOriginals = { title: null, headline: null, slug: null };
+  }
 });
 
 Then('the title value should be capped at 32 characters', async ({ profileBuilderPage }) => {

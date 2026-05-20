@@ -36,12 +36,15 @@ Feature: CAT11 - Profile Builder – General Tab
     When I fill the headline field with "This is my headline for testing."
     Then the headline character count should be displayed
 
-  @pbg-validation
-  Scenario: PBG005 - Headline field enforces the 160-character limit
+  @pbg-validation @pbg-char-limits
+  Scenario: PBG005 - Text fields enforce character limits
     When I fill the headline field with a 160-character string
     Then the headline character count should show the limit is reached
+    When I fill the title field with a 40-character string
+    Then the title value should be capped at 32 characters
     When I click save
     Then the save should succeed without errors
+    And the avatar title in the preview should not overflow the layout
 
   @pbg-validation
   Scenario: PBG006 - Invalid slug values show a format validation error
@@ -81,7 +84,6 @@ Feature: CAT11 - Profile Builder – General Tab
 
   # ─── Reactive slug → Share URL update ─────────────────────────────────────────
 
-
   @pbg-reactive-slug
   Scenario: PBG010 - Share URL updates to reflect new slug after save without hard refresh
     When I update the slug to a new unique value and save
@@ -90,12 +92,3 @@ Feature: CAT11 - Profile Builder – General Tab
     And the share popover should not show the old slug
     When I click the Open link button in the share popover
     Then the end user page should open at the new slug URL
-
-
-  @pbg-validation
-  Scenario: PBG011 - Avatar title field enforces 32-character limit
-    When I fill the title field with a 40-character string
-    Then the title value should be capped at 32 characters
-    When I click save
-    Then the save should succeed without errors
-    And the avatar title in the preview should not overflow the layout
