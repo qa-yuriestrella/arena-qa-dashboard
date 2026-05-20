@@ -359,55 +359,95 @@ class ProfileBuilderPage {
   }
 
   // ─── PBG010 – Share URL reactive update ──────────────────────────────────────
-
-  _shareUrlSpan() {
-    // Right-panel header shows the full avatar public URL in a truncated span
-    return this.page.locator('span').filter({ hasText: /https:\/\/.*arena\.im\// }).first();
-  }
-
-  async getShareUrlText() {
-    return (await this._shareUrlSpan().innerText({ timeout: 5000 }).catch(() => '')).trim();
-  }
+  //
+  // Flow: change slug on /profile-builder → save → app redirects to /knowledge-base
+  // (SPA navigation, not a hard refresh). The Share Avatar button must already show
+  // the new slug URL without any additional page reload.
 
   async updateSlugToUniqueValue() {
     this._reactiveTestOldSlug = await this.page.locator('#slug').inputValue();
-    const newSlug = `e2ereact${Date.now() % 100000}`;
+    // 8-digit suffix keeps slug within 3-20 char limit (e2e = 3 + up to 5 digits)
+    const newSlug = `e2e${String(Date.now()).slice(-5)}`;
     this._reactiveTestNewSlug = newSlug;
     await this.fillSlug(newSlug);
   }
 
-  async saveAndReturnToProfileBuilder() {
-    await this.clickSave();
-    await (this._pendingSaveResponse ?? Promise.resolve());
-    this._pendingSaveResponse = null;
-
-    // A slug change triggers a client-side redirect to /knowledge-base. Navigate back
-    // without a hard refresh (page.goto keeps the SPA session alive, no cache bypass).
-    await this.page.waitForTimeout(2000);
-    if (!this.page.url().includes('/profile-builder')) {
-      await this.page.goto('/profile-builder', { waitUntil: 'load' });
-      await this.page.getByText('Set the basic information of your profile').waitFor({ timeout: 15000 });
-      await this.page.waitForTimeout(1000);
-    }
+  async saveSlugAndAwaitRedirect() {
+    // Save fires the API call; a slug change triggers an SPA redirect to /knowledge-base.
+    const responsePromise = this.page.waitForResponse(
+      r => r.url().includes('/commerce-ai/') && r.request().method() !== 'GET' && r.status() === 200,
+      { timeout: 20000 },
+    ).catch(() => null);
+    await this.page.getByRole('button', { name: /^save$/i }).first().click();
+    await responsePromise;
+    // Wait for the SPA redirect — slug change always triggers navigation to /knowledge-base
+    await this.page.waitForURL(/knowledge-base/i, { timeout: 20000 });
+    await this.page.waitForTimeout(1000);
   }
 
-  async shareUrlShouldContainNewSlug() {
-    await expect(this._shareUrlSpan()).toContainText(this._reactiveTestNewSlug, { timeout: 8000 });
+  async clickShareAvatarButton() {
+    // After a slug save the app redirects to /knowledge-base. The Share Avatar button
+    // lives on that page — click it directly without any navigation or refresh.
+    // If the SPA client-side store hasn't updated the slug URL yet, the popover will
+    // still show the old slug, which is the bug this test is designed to catch.
+    await this.page.locator('button[aria-label="Share avatar"]').click();
+    await this.page.locator('[role="menu"][data-state="open"]').waitFor({ state: 'visible', timeout: 8000 });
   }
 
-  async shareUrlShouldNotContainOldSlug() {
-    const text = await this.getShareUrlText();
+  async sharePopoverShouldShowNewSlug() {
+    const menu = this.page.locator('[role="menu"][data-state="open"]');
+    await expect(menu).toContainText(this._reactiveTestNewSlug, { timeout: 5000 });
+  }
+
+  async sharePopoverShouldNotShowOldSlug() {
+    const menu = this.page.locator('[role="menu"][data-state="open"]');
+    const text = await menu.innerText({ timeout: 3000 }).catch(() => '');
     expect(text).not.toContain(this._reactiveTestOldSlug);
   }
 
-  async restoreSlugAfterReactiveTest() {
-    if (!this._reactiveTestOldSlug || this._reactiveTestOldSlug === this._reactiveTestNewSlug) return;
+  async openLinkButtonShouldBeVisible() {
+    await expect(
+      this.page.locator('[role="menu"][data-state="open"]').locator('button[aria-label="Open link"]')
+    ).toBeVisible({ timeout: 5000 });
+  }
+
+  async clickOpenLinkInSharePopover() {
+    const menu = this.page.locator('[role="menu"][data-state="open"]');
+    const openLinkBtn = menu.locator('button[aria-label="Open link"]');
+    await openLinkBtn.waitFor({ state: 'visible', timeout: 5000 });
+    // Button may open the EU page in a new tab or navigate in the same tab.
+    const [newTab] = await Promise.all([
+      this.page.context().waitForEvent('page', { timeout: 5000 }).catch(() => null),
+      openLinkBtn.click(),
+    ]);
+    if (newTab) {
+      await newTab.waitForLoadState('load', { timeout: 15000 });
+      this._euTabFromShare = newTab;
+    } else {
+      await this.page.waitForURL(new RegExp(this._reactiveTestNewSlug), { timeout: 15000 });
+      this._euTabFromShare = this.page;
+    }
+  }
+
+  async euPageShouldOpenAtNewSlugUrl() {
+    const target = this._euTabFromShare || this.page;
+    await expect(target).toHaveURL(new RegExp(this._reactiveTestNewSlug), { timeout: 10000 });
+  }
+
+  async restoreSlugAfterReactiveTest(oldSlug) {
+    const target = oldSlug || this._reactiveTestOldSlug;
+    if (!target) return;
     await this.visitGeneral();
-    await this.fillSlug(this._reactiveTestOldSlug);
-    await this.clickSave();
-    await (this._pendingSaveResponse ?? Promise.resolve());
-    this._pendingSaveResponse = null;
-    await this.page.waitForTimeout(3000);
+    await this.fillSlug(target);
+    const responsePromise = this.page.waitForResponse(
+      r => r.url().includes('/commerce-ai/') && r.request().method() !== 'GET' && r.status() === 200,
+      { timeout: 20000 },
+    ).catch(() => null);
+    await this.page.getByRole('button', { name: /^save$/i }).first().click();
+    await responsePromise;
+    // Wait for redirect (slug restore also redirects) then return to profile-builder
+    await this.page.waitForURL(/knowledge-base/i, { timeout: 20000 }).catch(() => {});
+    await this.page.waitForTimeout(1000);
   }
 
   // ─── PBG011 – Title 32-char limit ────────────────────────────────────────────

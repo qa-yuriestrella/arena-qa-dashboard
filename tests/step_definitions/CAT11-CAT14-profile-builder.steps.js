@@ -191,24 +191,36 @@ When('I update the slug to a new unique value and save', async ({ profileBuilder
   _cleanupOriginals.title = await page.locator('#title').inputValue();
   _cleanupOriginals.headline = await page.locator('#bio').inputValue();
   await profileBuilderPage.updateSlugToUniqueValue();
-  await profileBuilderPage.saveAndReturnToProfileBuilder();
+  await profileBuilderPage.saveSlugAndAwaitRedirect();
 });
 
-Then('the share URL should contain the new slug', async ({ profileBuilderPage }) => {
-  await profileBuilderPage.shareUrlShouldContainNewSlug();
+When('I click the Share Avatar button', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.clickShareAvatarButton();
 });
 
-Then('the share URL should not show the old slug', async ({ profileBuilderPage }) => {
-  await profileBuilderPage.shareUrlShouldNotContainOldSlug();
+Then('the share popover should show the new slug in the URL', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.sharePopoverShouldShowNewSlug();
+});
+
+Then('the share popover should not show the old slug', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.sharePopoverShouldNotShowOldSlug();
+});
+
+Then('the Open link button should be visible in the share popover', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.openLinkButtonShouldBeVisible();
+});
+
+When('I click the Open link button in the share popover', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.clickOpenLinkInSharePopover();
+});
+
+Then('the end user page should open at the new slug URL', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.euPageShouldOpenAtNewSlugUrl();
 });
 
 After({ tags: '@pbg-reactive-slug' }, async ({ page }) => {
   const pb = new ProfileBuilderPage(page);
-  pb._originalTitle = _cleanupOriginals.title;
-  pb._originalHeadline = _cleanupOriginals.headline;
-  pb._originalSlug = _cleanupOriginals.slug;
-  await pb.restoreSlugAfterReactiveTest();
-  await pb.restoreOriginalProfileSettings();
+  await pb.restoreSlugAfterReactiveTest(_cleanupOriginals.slug);
   _cleanupOriginals = { title: null, headline: null, slug: null };
 });
 

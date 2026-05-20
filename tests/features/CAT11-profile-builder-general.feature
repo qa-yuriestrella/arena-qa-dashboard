@@ -81,24 +81,16 @@ Feature: CAT11 - Profile Builder – General Tab
 
   # ─── Reactive slug → Share URL update ─────────────────────────────────────────
 
-  # The right panel header shows the full public avatar URL. After a slug save the app
-  # redirects to /knowledge-base (SPA route change). Navigating back to /profile-builder
-  # (without a hard refresh / cache bypass) must already show the updated slug URL.
-  # If the URL still shows the old slug it means the app relies on a hard refresh to
-  # invalidate its client-side cache — which this test is designed to catch.
 
   @pbg-reactive-slug
   Scenario: PBG010 - Share URL updates to reflect new slug after save without hard refresh
     When I update the slug to a new unique value and save
-    Then the share URL should contain the new slug
-    And the share URL should not show the old slug
+    And I click the Share Avatar button
+    Then the share popover should show the new slug in the URL
+    And the share popover should not show the old slug
+    When I click the Open link button in the share popover
+    Then the end user page should open at the new slug URL
 
-  # ─── Title 32-character limit ──────────────────────────────────────────────────
-
-  # The title field (id="title") has no HTML maxlength attribute; the 32-char cap is
-  # enforced by the React input handler. pressSequentially fires real keyboard events
-  # so the JavaScript limit is exercised. The save must complete without errors and the
-  # avatar name in the preview iframe must not overflow the layout.
 
   @pbg-validation
   Scenario: PBG011 - Avatar title field enforces 32-character limit
