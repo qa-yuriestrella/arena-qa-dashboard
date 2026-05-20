@@ -10,6 +10,8 @@ const { VideoAIPage } = require('../support/Pages/VideoAIPage');
 const { ProfileBuilderPage } = require('../support/Pages/ProfileBuilderPage');
 const { AudiencePage } = require('../support/Pages/AudiencePage');
 const { AvatarManagementPage } = require('../support/Pages/AvatarManagementPage');
+const { SettingsTeamPage } = require('../support/Pages/SettingsTeamPage');
+const { SettingsInvitePage } = require('../support/Pages/SettingsInvitePage');
 
 const test = playwrightBdd.test.extend({
   signupPage: async ({ page }, use) => {
@@ -53,6 +55,12 @@ const test = playwrightBdd.test.extend({
   },
   avatarManagementPage: async ({ authenticatedPage }, use) => {
     await use(new AvatarManagementPage(authenticatedPage));
+  },
+  settingsTeamPage: async ({ authenticatedPage }, use) => {
+    await use(new SettingsTeamPage(authenticatedPage));
+  },
+  settingsInvitePage: async ({ authenticatedPage }, use) => {
+    await use(new SettingsInvitePage(authenticatedPage));
   },
 });
 
