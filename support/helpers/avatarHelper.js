@@ -9,70 +9,100 @@ const PRIMARY_SLUG = (process.env.EU_URL || 'https://dev-avatar.arena.im/automat
  *     source of which avatar is currently selected.
  *  3. If the slug already matches automation1arena, return immediately.
  *  4. Otherwise wait for the Switch Avatars dialog and click the primary avatar.
+ *
+ * Special case: if the account is stuck on a "Lock in your Identity" onboarding
+ * page (new unconfigured avatar), the sidebar switcher is unavailable. Click the
+ * "Back" button to leave the onboarding flow, then retry the switcher logic.
  */
 async function ensurePrimaryAvatar(page) {
-  // Register the listener BEFORE navigating so the response is never missed.
-  const currentPromise = page.waitForResponse(
-    res => /\/current\b/.test(res.url()) && res.status() === 200,
-    { timeout: 15000 }
-  ).catch(() => null);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    // Register the listener BEFORE navigating so the response is never missed.
+    const currentPromise = page.waitForResponse(
+      res => /\/current\b/.test(res.url()) && res.status() === 200,
+      { timeout: 15000 }
+    ).catch(() => null);
 
-  await page.goto('/');
-  await page.waitForLoadState('load');
+    await page.goto('/');
+    await page.waitForLoadState('load');
 
-  const currentRes = await currentPromise;
-  let isAlreadyPrimary = false;
-
-  if (currentRes) {
-    try {
-      const json = await currentRes.json();
-      // The active avatar's slug lives at personalize.slug in the current response
-      const slug =
-        json?.personalize?.slug ||
-        json?.data?.personalize?.slug ||
-        json?.avatar?.personalize?.slug ||
-        null;
-      if (slug !== null) {
-        isAlreadyPrimary = slug === PRIMARY_SLUG;
+    // If redirected to the "Lock in your Identity" handle-setup onboarding page,
+    // click "Back" to navigate away and retry.
+    const isOnboarding = await page.locator('h1, h2').filter({ hasText: /Lock in your Identity/i })
+      .isVisible({ timeout: 3000 }).catch(() => false);
+    if (isOnboarding) {
+      const backBtn = page.getByRole('button', { name: 'Back' });
+      if (await backBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await backBtn.click();
+        await page.waitForLoadState('load');
+        await page.waitForTimeout(2000);
       }
-    } catch { /* JSON parse failed — fall through to the switcher */ }
-  }
-
-  if (isAlreadyPrimary) return;
-
-  // Wrong avatar (or couldn't determine) — switch via the UI switcher
-  const switcherBtn = page.locator('[data-sidebar="menu-button"][aria-haspopup="menu"]');
-  const visible = await switcherBtn.waitFor({ state: 'visible', timeout: 10000 }).then(() => true).catch(() => false);
-  if (!visible) return;
-
-  await switcherBtn.click();
-  const switchText = page.getByText('Switch Avatars');
-  const menuVisible = await switchText.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false);
-  if (!menuVisible) {
-    await page.keyboard.press('Escape');
-    return;
-  }
-
-  await switchText.click();
-  const dialog = page.locator('[role="dialog"]');
-  await dialog.waitFor({ state: 'visible', timeout: 8000 }).catch(() => null);
-
-  // Primary avatar renders as a plain <div> (current) or <button> (non-current).
-  // If it appears as a button, click it to switch.
-  const primaryBtn = dialog.getByRole('button').filter({ hasText: PRIMARY_SLUG });
-  if (await primaryBtn.count() > 0) {
-    await primaryBtn.first().click();
-    await page.waitForLoadState('networkidle', { timeout: 15000 });
-    // Dismiss the Avatar Health popper that can appear after a switch
-    const popper = page.locator('[data-radix-popper-content-wrapper]');
-    if (await popper.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await page.mouse.click(720, 50);
-      await popper.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+      continue; // retry the loop
     }
-  } else {
-    // Primary is already current (shown as a div) — just close the dialog
-    await page.keyboard.press('Escape');
-    await dialog.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
+
+    const currentRes = await currentPromise;
+    let isAlreadyPrimary = false;
+
+    if (currentRes) {
+      try {
+        const json = await currentRes.json();
+        // The active avatar's slug lives at personalize.slug in the current response
+        const slug =
+          json?.personalize?.slug ||
+          json?.data?.personalize?.slug ||
+          json?.avatar?.personalize?.slug ||
+          null;
+        if (slug !== null) {
+          isAlreadyPrimary = slug === PRIMARY_SLUG;
+        }
+      } catch { /* JSON parse failed — fall through to the switcher */ }
+    }
+
+    if (isAlreadyPrimary) return;
+
+    // Wrong avatar (or couldn't determine) — switch via the UI switcher.
+    // If the sidebar is currently collapsed, reveal it so the switcher button is accessible.
+    const showSidebarBtn = page.getByRole('button', { name: 'Show Sidebar' });
+    if (await showSidebarBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await showSidebarBtn.click();
+      await page.waitForTimeout(500);
+    }
+
+    const switcherBtn = page.locator('[data-sidebar="menu-button"][aria-haspopup="menu"]');
+    const visible = await switcherBtn.waitFor({ state: 'visible', timeout: 10000 }).then(() => true).catch(() => false);
+    if (!visible) continue; // sidebar still not showing switcher — retry whole flow
+
+    await switcherBtn.click();
+    const switchText = page.getByText('Switch Avatars');
+    const menuVisible = await switchText.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false);
+    if (!menuVisible) {
+      await page.keyboard.press('Escape');
+      continue; // menu didn't open — retry
+    }
+
+    await switchText.click();
+    const dialog = page.locator('[role="dialog"]');
+    await dialog.waitFor({ state: 'visible', timeout: 8000 }).catch(() => null);
+
+    // Primary avatar renders as a plain <div> (current) or <button> (non-current).
+    // If it appears as a button, click it to switch.
+    const primaryBtn = dialog.getByRole('button').filter({ hasText: PRIMARY_SLUG });
+    if (await primaryBtn.count() > 0) {
+      await primaryBtn.first().click();
+      await page.waitForLoadState('networkidle', { timeout: 15000 });
+      // Dismiss the Avatar Health popper that can appear after a switch
+      const popper = page.locator('[data-radix-popper-content-wrapper]');
+      if (await popper.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await page.mouse.click(720, 50);
+        await popper.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+      }
+      // Switch was clicked — loop once more to confirm the slug changed
+      continue;
+    } else {
+      // Primary is already current (shown as a div) — just close the dialog
+      await page.keyboard.press('Escape');
+      await dialog.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
+      return;
+    }
   }
 }
 
