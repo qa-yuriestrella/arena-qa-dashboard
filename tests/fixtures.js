@@ -47,7 +47,10 @@ const test = playwrightBdd.test.extend({
     await use(new ChatLogPage(authenticatedPage));
   },
   videoAIPage: async ({ authenticatedPage }, use) => {
-    await use(new VideoAIPage(authenticatedPage));
+    const vaiPage = new VideoAIPage(authenticatedPage);
+    await use(vaiPage);
+    // Teardown: delete any video generated during this test (pass or fail)
+    await vaiPage.cleanupGeneratedVideo();
   },
   profileBuilderPage: async ({ authenticatedPage }, use) => {
     await use(new ProfileBuilderPage(authenticatedPage));

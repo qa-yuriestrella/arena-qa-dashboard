@@ -1,0 +1,279 @@
+[
+  {
+    "method": "POST",
+    "url": "https://stg-dash-avatar.arena.im/monitoring?o=4510200301944832&p=4511152027795536&r=de",
+    "postData": "{\"sent_at\":\"2026-05-21T23:43:09.433Z\",\"sdk\":{\"name\":\"sentry.javascript.nextjs\",\"version\":\"10.36.0\"},\"dsn\":\"https://af7f30e46b3f0e9a88f963345c64081c@o4510200301944832.ingest.de.sentry.io/4511152027795536\"}\n{\"type\":\"session\"}\n{\"sid\":\"1abcb0b342b549d99fa9acbc4c08528f\",\"init\":true,\"started\":\"2026-05-21T",
+    "status": 307,
+    "responseSnippet": ""
+  },
+  {
+    "method": "POST",
+    "url": "https://stg-dash-avatar.arena.im/login?o=4510200301944832&p=4511152027795536&r=de",
+    "postData": "{\"sent_at\":\"2026-05-21T23:43:09.433Z\",\"sdk\":{\"name\":\"sentry.javascript.nextjs\",\"version\":\"10.36.0\"},\"dsn\":\"https://af7f30e46b3f0e9a88f963345c64081c@o4510200301944832.ingest.de.sentry.io/4511152027795536\"}\n{\"type\":\"session\"}\n{\"sid\":\"1abcb0b342b549d99fa9acbc4c08528f\",\"init\":true,\"started\":\"2026-05-21T",
+    "status": 200,
+    "responseSnippet": ""
+  },
+  {
+    "method": "POST",
+    "url": "https://rudder-server-dev.arena.im/v1/page",
+    "postData": "{\"properties\":{\"path\":\"/login\",\"name\":\"/login\",\"referrer\":\"$direct\",\"referring_domain\":\"\",\"search\":\"\",\"title\":\"myAvatar Dashboard\",\"url\":\"https://stg-dash-avatar.arena.im/login\",\"tab_url\":\"https://stg-dash-avatar.arena.im/login\",\"initial_referrer\":\"$direct\",\"initial_referring_domain\":\"\"},\"name\":\"/lo",
+    "status": 200,
+    "responseSnippet": "ok"
+  },
+  {
+    "method": "POST",
+    "url": "https://www.google.com/recaptcha/api2/reload?k=6LcbGBErAAAAAMY-J9tV6NfYdd1IEvNh2sdhh1dq",
+    "postData": "\n\u0018Br0hYqpfWeFzYCAXLD4UuCIV\u0012�\f03AFcWeA7zvPkq78eagSqTiC4rDyAJto7t6vzzfhEGQaDQPLDz2urcDLfFhOflQlRGdXW4laeSTfzt-8O-VWhdPprEcSLV2-pjTZr9MJXK3WuVHsxG9oYfVXTsxvZy7Lf4VV1phbULfBBPyJlcFGDGpOORugqJHKyf7gKFMoHiIa7kgj1Fsk1xmqEJ6x0l2gO5IaHup3gmbSOK4QlvYJumjEXMZ2S6QqDQEQBLB51odu-ZtyMOyjmdSTRCdNcWIGaBvKxAJGdxDYakW",
+    "status": 200,
+    "responseSnippet": ")]}'\n[\"rresp\",\"0cAFcWeA6IiUayWUPPdWRnLcUpPb1ksoxVX80le0lu7ymKH4ns2DrwBGp7NpZYrq2Pl4AllYEZU0pMylhtj2oM3oKGwBdDum7BUXjfQIyAMxY9deH-cz3J3XXDzUiqda9jGqxaIcbbF6IEwg8YekP8S8Lq6o9Q2xOQzQfx4XDGryN-1Dv1ojm4AKEBz3Ch0ngbSQvRqcVE9St7WiuiyaXtTydcQvM1KudifMKJNVQ15mXGlRU18BRUF5N7v2kcF1PN6UJqPme2dLmPZKFTRFGyQZCfODw"
+  },
+  {
+    "method": "POST",
+    "url": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyAhDuHSyddjpEKmnKNKxVOtBvTQ4i9GZvk",
+    "postData": "{\"returnSecureToken\":true,\"email\":\"automation.arena1+1@gmail.com\",\"password\":\"Automation@123\",\"clientType\":\"CLIENT_TYPE_WEB\"}",
+    "status": 200,
+    "responseSnippet": "{\n  \"kind\": \"identitytoolkit#VerifyPasswordResponse\",\n  \"localId\": \"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\n  \"email\": \"automation.arena1+1@gmail.com\",\n  \"displayName\": \"Automation Arena\",\n  \"idToken\": \"eyJhbGciOiJSUzI1NiIsImtpZCI6ImM5YTBjMWRlYWEyN2JjNjMyNTUzYmM4MWEyMmQ4NzY1MWM3MTMyY2IiLCJ0eXAiOiJKV1QifQ.eyJ"
+  },
+  {
+    "method": "POST",
+    "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyAhDuHSyddjpEKmnKNKxVOtBvTQ4i9GZvk",
+    "postData": "{\"idToken\":\"eyJhbGciOiJSUzI1NiIsImtpZCI6ImM5YTBjMWRlYWEyN2JjNjMyNTUzYmM4MWEyMmQ4NzY1MWM3MTMyY2IiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiQXV0b21hdGlvbiBBcmVuYSIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9hcmVuYS1kZXYtZjkwNDUiLCJhdWQiOiJhcmVuYS1kZXYtZjkwNDUiLCJhdXRoX3RpbWUiOjE3Nzk0MDY5OTIsInVzZXJfaWQiO",
+    "status": 200,
+    "responseSnippet": "{\n  \"kind\": \"identitytoolkit#GetAccountInfoResponse\",\n  \"users\": [\n    {\n      \"localId\": \"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\n      \"email\": \"automation.arena1+1@gmail.com\",\n      \"displayName\": \"Automation Arena\",\n      \"passwordHash\": \"UkVEQUNURUQ=\",\n      \"emailVerified\": false,\n      \"passwordUpdate"
+  },
+  {
+    "method": "POST",
+    "url": "https://stg-dash-avatar.arena.im/login",
+    "postData": "[\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",null]",
+    "status": 303,
+    "responseSnippet": ""
+  },
+  {
+    "method": "POST",
+    "url": "https://auth-dev.arena.im/customer-user/login",
+    "postData": "{\"id\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"firebaseToken\":\"eyJhbGciOiJSUzI1NiIsImtpZCI6ImM5YTBjMWRlYWEyN2JjNjMyNTUzYmM4MWEyMmQ4NzY1MWM3MTMyY2IiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiQXV0b21hdGlvbiBBcmVuYSIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9hcmVuYS1kZXYtZjkwNDUiLCJhdWQiOiJhcmVuYS1kZXYtZjkwNDUiLCJ",
+    "status": 201,
+    "responseSnippet": "{\"data\":{\"login\":{\"user\":{\"_id\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"name\":\"Automation Arena\",\"email\":\"automation.arena1+1@gmail.com\",\"phoneNumber\":\"\",\"jobTitle\":\"\",\"image\":\"https://arena-dev.imgix.net/abgrd/9.png?txtfont=Arial%20Bold&txt=AA&txtsize=100&txtcolor=FFFFFF&txtalign=center,middle&w=200&h=200&"
+  },
+  {
+    "method": "POST",
+    "url": "https://rudder-server-dev.arena.im/v1/identify",
+    "postData": "{\"userId\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"type\":\"identify\",\"context\":{\"traits\":{\"email\":\"automation.arena1+1@gmail.com\",\"name\":\"Automation Arena\"},\"sessionId\":1779406990193,\"app\":{\"name\":\"RudderLabs JavaScript SDK\",\"namespace\":\"com.rudderlabs.javascript\",\"version\":\"3.31.0\",\"installType\":\"npm\"},\"libr",
+    "status": 200,
+    "responseSnippet": "ok"
+  },
+  {
+    "method": "POST",
+    "url": "https://stg-dash-avatar.arena.im/monitoring?o=4510200301944832&p=4511152027795536&r=de",
+    "postData": "{\"sent_at\":\"2026-05-21T23:43:14.395Z\",\"sdk\":{\"name\":\"sentry.javascript.nextjs\",\"version\":\"10.36.0\"},\"dsn\":\"https://af7f30e46b3f0e9a88f963345c64081c@o4510200301944832.ingest.de.sentry.io/4511152027795536\"}\n{\"type\":\"session\"}\n{\"sid\":\"1abcb0b342b549d99fa9acbc4c08528f\",\"init\":false,\"started\":\"2026-05-21",
+    "status": 200,
+    "responseSnippet": ""
+  },
+  {
+    "method": "POST",
+    "url": "https://stg-dash-avatar.arena.im/monitoring?o=4510200301944832&p=4511152027795536&r=de",
+    "postData": "{\"sent_at\":\"2026-05-21T23:43:14.396Z\",\"sdk\":{\"name\":\"sentry.javascript.nextjs\",\"version\":\"10.36.0\"},\"dsn\":\"https://af7f30e46b3f0e9a88f963345c64081c@o4510200301944832.ingest.de.sentry.io/4511152027795536\"}\n{\"type\":\"session\"}\n{\"sid\":\"1f97bf88121843398e9f9afb019f1eb5\",\"init\":true,\"started\":\"2026-05-21T",
+    "status": 200,
+    "responseSnippet": ""
+  },
+  {
+    "method": "POST",
+    "url": "https://api-dev.arena.im/gql/graphql",
+    "postData": "{\"query\":\"query getUser($userId: ID!) {\\n  user(id: $userId) {\\n    ...userBasicFields\\n  }\\n}\\n\\nfragment userBasicFields on User {\\n  _id\\n  name\\n  phoneNumber\\n  jobTitle\\n  image\\n  displayEditorName\\n  email\\n  navigationTour\\n  liveblogTour\\n  chatTour\\n  isAdmin\\n  accounts {\\n    ...account",
+    "status": 200,
+    "responseSnippet": "{\"data\":{\"user\":{\"_id\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"name\":\"Automation Arena\",\"phoneNumber\":\"\",\"jobTitle\":\"\",\"image\":\"https://arena-dev.imgix.net/abgrd/9.png?txtfont=Arial%20Bold&txt=AA&txtsize=100&txtcolor=FFFFFF&txtalign=center,middle&w=200&h=200&t=1779135357256\",\"displayEditorName\":null,\"email\""
+  },
+  {
+    "method": "POST",
+    "url": "https://rudder-server-dev.arena.im/v1/page",
+    "postData": "{\"properties\":{\"path\":\"/\",\"name\":\"/\",\"referrer\":\"$direct\",\"referring_domain\":\"\",\"search\":\"\",\"title\":\"Home - myAvatar Dashboard\",\"url\":\"https://stg-dash-avatar.arena.im/\",\"tab_url\":\"https://stg-dash-avatar.arena.im/\",\"initial_referrer\":\"$direct\",\"initial_referring_domain\":\"\"},\"name\":\"/\",\"type\":\"page\"",
+    "status": 200,
+    "responseSnippet": ""
+  },
+  {
+    "method": "POST",
+    "url": "https://stg-dash-avatar.arena.im/monitoring?o=4510200301944832&p=4511152027795536&r=de",
+    "postData": "{\"dsn\":\"https://af7f30e46b3f0e9a88f963345c64081c@o4510200301944832.ingest.de.sentry.io/4511152027795536\"}\n{\"type\":\"client_report\"}\n{\"timestamp\":1779406994.941,\"discarded_events\":[{\"reason\":\"sample_rate\",\"category\":\"transaction\",\"quantity\":2},{\"reason\":\"event_processor\",\"category\":\"error\",\"quantity\":",
+    "status": 200,
+    "responseSnippet": "{}"
+  },
+  {
+    "method": "POST",
+    "url": "https://stg-dash-avatar.arena.im/monitoring?o=4510200301944832&p=4511152027795536&r=de",
+    "postData": "{\"sent_at\":\"2026-05-21T23:43:15.021Z\",\"sdk\":{\"name\":\"sentry.javascript.nextjs\",\"version\":\"10.36.0\"},\"dsn\":\"https://af7f30e46b3f0e9a88f963345c64081c@o4510200301944832.ingest.de.sentry.io/4511152027795536\"}\n{\"type\":\"session\"}\n{\"sid\":\"e966782432e042c8a6af92dde97034f9\",\"init\":true,\"started\":\"2026-05-21T",
+    "status": 200,
+    "responseSnippet": "{}"
+  },
+  {
+    "method": "POST",
+    "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyAhDuHSyddjpEKmnKNKxVOtBvTQ4i9GZvk",
+    "postData": "{\"idToken\":\"eyJhbGciOiJSUzI1NiIsImtpZCI6ImM5YTBjMWRlYWEyN2JjNjMyNTUzYmM4MWEyMmQ4NzY1MWM3MTMyY2IiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiQXV0b21hdGlvbiBBcmVuYSIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9hcmVuYS1kZXYtZjkwNDUiLCJhdWQiOiJhcmVuYS1kZXYtZjkwNDUiLCJhdXRoX3RpbWUiOjE3Nzk0MDY5OTIsInVzZXJfaWQiO",
+    "status": 200,
+    "responseSnippet": "{\n  \"kind\": \"identitytoolkit#GetAccountInfoResponse\",\n  \"users\": [\n    {\n      \"localId\": \"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\n      \"email\": \"automation.arena1+1@gmail.com\",\n      \"displayName\": \"Automation Arena\",\n      \"passwordHash\": \"UkVEQUNURUQ=\",\n      \"emailVerified\": false,\n      \"passwordUpdate"
+  },
+  {
+    "method": "POST",
+    "url": "https://rudder-server-dev.arena.im/v1/page",
+    "postData": "{\"properties\":{\"path\":\"/video-ai\",\"name\":\"/video-ai\",\"referrer\":\"$direct\",\"referring_domain\":\"\",\"search\":\"\",\"title\":\"Video AI - myAvatar Dashboard\",\"url\":\"https://stg-dash-avatar.arena.im/video-ai\",\"tab_url\":\"https://stg-dash-avatar.arena.im/video-ai\",\"initial_referrer\":\"$direct\",\"initial_referring_",
+    "status": 200,
+    "responseSnippet": "ok"
+  },
+  {
+    "method": "POST",
+    "url": "https://auth-dev.arena.im/customer-user/login",
+    "postData": "{\"id\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"firebaseToken\":\"eyJhbGciOiJSUzI1NiIsImtpZCI6ImM5YTBjMWRlYWEyN2JjNjMyNTUzYmM4MWEyMmQ4NzY1MWM3MTMyY2IiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiQXV0b21hdGlvbiBBcmVuYSIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9hcmVuYS1kZXYtZjkwNDUiLCJhdWQiOiJhcmVuYS1kZXYtZjkwNDUiLCJ",
+    "status": 201,
+    "responseSnippet": "{\"data\":{\"login\":{\"user\":{\"_id\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"name\":\"Automation Arena\",\"email\":\"automation.arena1+1@gmail.com\",\"phoneNumber\":\"\",\"jobTitle\":\"\",\"image\":\"https://arena-dev.imgix.net/abgrd/9.png?txtfont=Arial%20Bold&txt=AA&txtsize=100&txtcolor=FFFFFF&txtalign=center,middle&w=200&h=200&"
+  },
+  {
+    "method": "POST",
+    "url": "https://api-dev.arena.im/gql/graphql",
+    "postData": "{\"query\":\"query getUser($userId: ID!) {\\n  user(id: $userId) {\\n    ...userBasicFields\\n  }\\n}\\n\\nfragment userBasicFields on User {\\n  _id\\n  name\\n  phoneNumber\\n  jobTitle\\n  image\\n  displayEditorName\\n  email\\n  navigationTour\\n  liveblogTour\\n  chatTour\\n  isAdmin\\n  accounts {\\n    ...account",
+    "status": 200,
+    "responseSnippet": "{\"data\":{\"user\":{\"_id\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"name\":\"Automation Arena\",\"phoneNumber\":\"\",\"jobTitle\":\"\",\"image\":\"https://arena-dev.imgix.net/abgrd/9.png?txtfont=Arial%20Bold&txt=AA&txtsize=100&txtcolor=FFFFFF&txtalign=center,middle&w=200&h=200&t=1779135357256\",\"displayEditorName\":null,\"email\""
+  },
+  {
+    "method": "POST",
+    "url": "https://rudder-server-dev.arena.im/v1/identify",
+    "postData": "{\"userId\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"type\":\"identify\",\"context\":{\"traits\":{\"email\":\"automation.arena1+1@gmail.com\",\"name\":\"Automation Arena\"},\"sessionId\":1779406990193,\"app\":{\"name\":\"RudderLabs JavaScript SDK\",\"namespace\":\"com.rudderlabs.javascript\",\"version\":\"3.31.0\",\"installType\":\"npm\"},\"libr",
+    "status": 200,
+    "responseSnippet": "ok"
+  },
+  {
+    "method": "POST",
+    "url": "https://stg-dash-avatar.arena.im/monitoring?o=4510200301944832&p=4511152027795536&r=de",
+    "postData": "{\"dsn\":\"https://af7f30e46b3f0e9a88f963345c64081c@o4510200301944832.ingest.de.sentry.io/4511152027795536\"}\n{\"type\":\"client_report\"}\n{\"timestamp\":1779407008.188,\"discarded_events\":[{\"reason\":\"sample_rate\",\"category\":\"transaction\",\"quantity\":2},{\"reason\":\"sample_rate\",\"category\":\"span\",\"quantity\":1}]}",
+    "status": 200,
+    "responseSnippet": "{}"
+  },
+  {
+    "method": "POST",
+    "url": "https://stg-dash-avatar.arena.im/monitoring?o=4510200301944832&p=4511152027795536&r=de",
+    "postData": "{\"sent_at\":\"2026-05-21T23:43:28.246Z\",\"sdk\":{\"name\":\"sentry.javascript.nextjs\",\"version\":\"10.36.0\"},\"dsn\":\"https://af7f30e46b3f0e9a88f963345c64081c@o4510200301944832.ingest.de.sentry.io/4511152027795536\"}\n{\"type\":\"session\"}\n{\"sid\":\"5b76838a789e43ec97195e5cb4497aa1\",\"init\":true,\"started\":\"2026-05-21T",
+    "status": 200,
+    "responseSnippet": "{}"
+  },
+  {
+    "method": "POST",
+    "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyAhDuHSyddjpEKmnKNKxVOtBvTQ4i9GZvk",
+    "postData": "{\"idToken\":\"eyJhbGciOiJSUzI1NiIsImtpZCI6ImM5YTBjMWRlYWEyN2JjNjMyNTUzYmM4MWEyMmQ4NzY1MWM3MTMyY2IiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiQXV0b21hdGlvbiBBcmVuYSIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9hcmVuYS1kZXYtZjkwNDUiLCJhdWQiOiJhcmVuYS1kZXYtZjkwNDUiLCJhdXRoX3RpbWUiOjE3Nzk0MDY5OTIsInVzZXJfaWQiO",
+    "status": 200,
+    "responseSnippet": "{\n  \"kind\": \"identitytoolkit#GetAccountInfoResponse\",\n  \"users\": [\n    {\n      \"localId\": \"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\n      \"email\": \"automation.arena1+1@gmail.com\",\n      \"displayName\": \"Automation Arena\",\n      \"passwordHash\": \"UkVEQUNURUQ=\",\n      \"emailVerified\": false,\n      \"passwordUpdate"
+  },
+  {
+    "method": "POST",
+    "url": "https://rudder-server-dev.arena.im/v1/page",
+    "postData": "{\"properties\":{\"path\":\"/video-ai\",\"name\":\"/video-ai\",\"referrer\":\"$direct\",\"referring_domain\":\"\",\"search\":\"\",\"title\":\"Video AI - myAvatar Dashboard\",\"url\":\"https://stg-dash-avatar.arena.im/video-ai\",\"tab_url\":\"https://stg-dash-avatar.arena.im/video-ai\",\"initial_referrer\":\"$direct\",\"initial_referring_",
+    "status": 200,
+    "responseSnippet": "ok"
+  },
+  {
+    "method": "POST",
+    "url": "https://auth-dev.arena.im/customer-user/login",
+    "postData": "{\"id\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"firebaseToken\":\"eyJhbGciOiJSUzI1NiIsImtpZCI6ImM5YTBjMWRlYWEyN2JjNjMyNTUzYmM4MWEyMmQ4NzY1MWM3MTMyY2IiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiQXV0b21hdGlvbiBBcmVuYSIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9hcmVuYS1kZXYtZjkwNDUiLCJhdWQiOiJhcmVuYS1kZXYtZjkwNDUiLCJ",
+    "status": 201,
+    "responseSnippet": "{\"data\":{\"login\":{\"user\":{\"_id\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"name\":\"Automation Arena\",\"email\":\"automation.arena1+1@gmail.com\",\"phoneNumber\":\"\",\"jobTitle\":\"\",\"image\":\"https://arena-dev.imgix.net/abgrd/9.png?txtfont=Arial%20Bold&txt=AA&txtsize=100&txtcolor=FFFFFF&txtalign=center,middle&w=200&h=200&"
+  },
+  {
+    "method": "POST",
+    "url": "https://api-dev.arena.im/gql/graphql",
+    "postData": "{\"query\":\"query getUser($userId: ID!) {\\n  user(id: $userId) {\\n    ...userBasicFields\\n  }\\n}\\n\\nfragment userBasicFields on User {\\n  _id\\n  name\\n  phoneNumber\\n  jobTitle\\n  image\\n  displayEditorName\\n  email\\n  navigationTour\\n  liveblogTour\\n  chatTour\\n  isAdmin\\n  accounts {\\n    ...account",
+    "status": 200,
+    "responseSnippet": "{\"data\":{\"user\":{\"_id\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"name\":\"Automation Arena\",\"phoneNumber\":\"\",\"jobTitle\":\"\",\"image\":\"https://arena-dev.imgix.net/abgrd/9.png?txtfont=Arial%20Bold&txt=AA&txtsize=100&txtcolor=FFFFFF&txtalign=center,middle&w=200&h=200&t=1779135357256\",\"displayEditorName\":null,\"email\""
+  },
+  {
+    "method": "POST",
+    "url": "https://rudder-server-dev.arena.im/v1/identify",
+    "postData": "{\"userId\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"type\":\"identify\",\"context\":{\"traits\":{\"email\":\"automation.arena1+1@gmail.com\",\"name\":\"Automation Arena\"},\"sessionId\":1779406990193,\"app\":{\"name\":\"RudderLabs JavaScript SDK\",\"namespace\":\"com.rudderlabs.javascript\",\"version\":\"3.31.0\",\"installType\":\"npm\"},\"libr",
+    "status": 200,
+    "responseSnippet": "ok"
+  },
+  {
+    "method": "POST",
+    "url": "https://stg-dash-avatar.arena.im/monitoring?o=4510200301944832&p=4511152027795536&r=de",
+    "postData": "{\"dsn\":\"https://af7f30e46b3f0e9a88f963345c64081c@o4510200301944832.ingest.de.sentry.io/4511152027795536\"}\n{\"type\":\"client_report\"}\n{\"timestamp\":1779407021.578,\"discarded_events\":[{\"reason\":\"sample_rate\",\"category\":\"transaction\",\"quantity\":1}]}"
+  },
+  {
+    "method": "POST",
+    "url": "https://stg-dash-avatar.arena.im/monitoring?o=4510200301944832&p=4511152027795536&r=de",
+    "postData": "{\"sent_at\":\"2026-05-21T23:43:41.618Z\",\"sdk\":{\"name\":\"sentry.javascript.nextjs\",\"version\":\"10.36.0\"},\"dsn\":\"https://af7f30e46b3f0e9a88f963345c64081c@o4510200301944832.ingest.de.sentry.io/4511152027795536\"}\n{\"type\":\"session\"}\n{\"sid\":\"44c38a650c4f4105b09c0ca14c765e9e\",\"init\":true,\"started\":\"2026-05-21T"
+  },
+  {
+    "method": "POST",
+    "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyAhDuHSyddjpEKmnKNKxVOtBvTQ4i9GZvk",
+    "postData": "{\"idToken\":\"eyJhbGciOiJSUzI1NiIsImtpZCI6ImM5YTBjMWRlYWEyN2JjNjMyNTUzYmM4MWEyMmQ4NzY1MWM3MTMyY2IiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiQXV0b21hdGlvbiBBcmVuYSIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9hcmVuYS1kZXYtZjkwNDUiLCJhdWQiOiJhcmVuYS1kZXYtZjkwNDUiLCJhdXRoX3RpbWUiOjE3Nzk0MDY5OTIsInVzZXJfaWQiO",
+    "status": 200,
+    "responseSnippet": "{\n  \"kind\": \"identitytoolkit#GetAccountInfoResponse\",\n  \"users\": [\n    {\n      \"localId\": \"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\n      \"email\": \"automation.arena1+1@gmail.com\",\n      \"displayName\": \"Automation Arena\",\n      \"passwordHash\": \"UkVEQUNURUQ=\",\n      \"emailVerified\": false,\n      \"passwordUpdate"
+  },
+  {
+    "method": "POST",
+    "url": "https://rudder-server-dev.arena.im/v1/page",
+    "postData": "{\"properties\":{\"path\":\"/video-ai\",\"name\":\"/video-ai\",\"referrer\":\"$direct\",\"referring_domain\":\"\",\"search\":\"\",\"title\":\"Video AI - myAvatar Dashboard\",\"url\":\"https://stg-dash-avatar.arena.im/video-ai\",\"tab_url\":\"https://stg-dash-avatar.arena.im/video-ai\",\"initial_referrer\":\"$direct\",\"initial_referring_",
+    "status": 200,
+    "responseSnippet": "ok"
+  },
+  {
+    "method": "POST",
+    "url": "https://auth-dev.arena.im/customer-user/login",
+    "postData": "{\"id\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"firebaseToken\":\"eyJhbGciOiJSUzI1NiIsImtpZCI6ImM5YTBjMWRlYWEyN2JjNjMyNTUzYmM4MWEyMmQ4NzY1MWM3MTMyY2IiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiQXV0b21hdGlvbiBBcmVuYSIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9hcmVuYS1kZXYtZjkwNDUiLCJhdWQiOiJhcmVuYS1kZXYtZjkwNDUiLCJ",
+    "status": 201,
+    "responseSnippet": "{\"data\":{\"login\":{\"user\":{\"_id\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"name\":\"Automation Arena\",\"email\":\"automation.arena1+1@gmail.com\",\"phoneNumber\":\"\",\"jobTitle\":\"\",\"image\":\"https://arena-dev.imgix.net/abgrd/9.png?txtfont=Arial%20Bold&txt=AA&txtsize=100&txtcolor=FFFFFF&txtalign=center,middle&w=200&h=200&"
+  },
+  {
+    "method": "POST",
+    "url": "https://api-dev.arena.im/gql/graphql",
+    "postData": "{\"query\":\"query getUser($userId: ID!) {\\n  user(id: $userId) {\\n    ...userBasicFields\\n  }\\n}\\n\\nfragment userBasicFields on User {\\n  _id\\n  name\\n  phoneNumber\\n  jobTitle\\n  image\\n  displayEditorName\\n  email\\n  navigationTour\\n  liveblogTour\\n  chatTour\\n  isAdmin\\n  accounts {\\n    ...account",
+    "status": 200,
+    "responseSnippet": "{\"data\":{\"user\":{\"_id\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"name\":\"Automation Arena\",\"phoneNumber\":\"\",\"jobTitle\":\"\",\"image\":\"https://arena-dev.imgix.net/abgrd/9.png?txtfont=Arial%20Bold&txt=AA&txtsize=100&txtcolor=FFFFFF&txtalign=center,middle&w=200&h=200&t=1779135357256\",\"displayEditorName\":null,\"email\""
+  },
+  {
+    "method": "POST",
+    "url": "https://rudder-server-dev.arena.im/v1/identify",
+    "postData": "{\"userId\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"type\":\"identify\",\"context\":{\"traits\":{\"email\":\"automation.arena1+1@gmail.com\",\"name\":\"Automation Arena\"},\"sessionId\":1779406990193,\"app\":{\"name\":\"RudderLabs JavaScript SDK\",\"namespace\":\"com.rudderlabs.javascript\",\"version\":\"3.31.0\",\"installType\":\"npm\"},\"libr",
+    "status": 200,
+    "responseSnippet": "ok"
+  },
+  {
+    "method": "POST",
+    "url": "https://stg-dash-avatar.arena.im/monitoring?o=4510200301944832&p=4511152027795536&r=de",
+    "postData": "{\"dsn\":\"https://af7f30e46b3f0e9a88f963345c64081c@o4510200301944832.ingest.de.sentry.io/4511152027795536\"}\n{\"type\":\"client_report\"}\n{\"timestamp\":1779407038.707,\"discarded_events\":[{\"reason\":\"sample_rate\",\"category\":\"transaction\",\"quantity\":1}]}"
+  },
+  {
+    "method": "POST",
+    "url": "https://stg-dash-avatar.arena.im/monitoring?o=4510200301944832&p=4511152027795536&r=de",
+    "postData": "{\"sent_at\":\"2026-05-21T23:43:58.754Z\",\"sdk\":{\"name\":\"sentry.javascript.nextjs\",\"version\":\"10.36.0\"},\"dsn\":\"https://af7f30e46b3f0e9a88f963345c64081c@o4510200301944832.ingest.de.sentry.io/4511152027795536\"}\n{\"type\":\"session\"}\n{\"sid\":\"e5389cb38c684ac8a45d8a8ee0ca10b0\",\"init\":true,\"started\":\"2026-05-21T"
+  },
+  {
+    "method": "POST",
+    "url": "https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=AIzaSyAhDuHSyddjpEKmnKNKxVOtBvTQ4i9GZvk",
+    "postData": "{\"idToken\":\"eyJhbGciOiJSUzI1NiIsImtpZCI6ImM5YTBjMWRlYWEyN2JjNjMyNTUzYmM4MWEyMmQ4NzY1MWM3MTMyY2IiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiQXV0b21hdGlvbiBBcmVuYSIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9hcmVuYS1kZXYtZjkwNDUiLCJhdWQiOiJhcmVuYS1kZXYtZjkwNDUiLCJhdXRoX3RpbWUiOjE3Nzk0MDY5OTIsInVzZXJfaWQiO",
+    "status": 200,
+    "responseSnippet": "{\n  \"kind\": \"identitytoolkit#GetAccountInfoResponse\",\n  \"users\": [\n    {\n      \"localId\": \"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\n      \"email\": \"automation.arena1+1@gmail.com\",\n      \"displayName\": \"Automation Arena\",\n      \"passwordHash\": \"UkVEQUNURUQ=\",\n      \"emailVerified\": false,\n      \"passwordUpdate"
+  },
+  {
+    "method": "POST",
+    "url": "https://rudder-server-dev.arena.im/v1/page",
+    "postData": "{\"properties\":{\"path\":\"/video-ai\",\"name\":\"/video-ai\",\"referrer\":\"$direct\",\"referring_domain\":\"\",\"search\":\"\",\"title\":\"Video AI - myAvatar Dashboard\",\"url\":\"https://stg-dash-avatar.arena.im/video-ai\",\"tab_url\":\"https://stg-dash-avatar.arena.im/video-ai\",\"initial_referrer\":\"$direct\",\"initial_referring_",
+    "status": 200,
+    "responseSnippet": "ok"
+  },
+  {
+    "method": "POST",
+    "url": "https://auth-dev.arena.im/customer-user/login",
+    "postData": "{\"id\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"firebaseToken\":\"eyJhbGciOiJSUzI1NiIsImtpZCI6ImM5YTBjMWRlYWEyN2JjNjMyNTUzYmM4MWEyMmQ4NzY1MWM3MTMyY2IiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiQXV0b21hdGlvbiBBcmVuYSIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9hcmVuYS1kZXYtZjkwNDUiLCJhdWQiOiJhcmVuYS1kZXYtZjkwNDUiLCJ",
+    "status": 201,
+    "responseSnippet": "{\"data\":{\"login\":{\"user\":{\"_id\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"name\":\"Automation Arena\",\"email\":\"automation.arena1+1@gmail.com\",\"phoneNumber\":\"\",\"jobTitle\":\"\",\"image\":\"https://arena-dev.imgix.net/abgrd/9.png?txtfont=Arial%20Bold&txt=AA&txtsize=100&txtcolor=FFFFFF&txtalign=center,middle&w=200&h=200&"
+  },
+  {
+    "method": "POST",
+    "url": "https://api-dev.arena.im/gql/graphql",
+    "postData": "{\"query\":\"query getUser($userId: ID!) {\\n  user(id: $userId) {\\n    ...userBasicFields\\n  }\\n}\\n\\nfragment userBasicFields on User {\\n  _id\\n  name\\n  phoneNumber\\n  jobTitle\\n  image\\n  displayEditorName\\n  email\\n  navigationTour\\n  liveblogTour\\n  chatTour\\n  isAdmin\\n  accounts {\\n    ...account"
+  },
+  {
+    "method": "POST",
+    "url": "https://rudder-server-dev.arena.im/v1/identify",
+    "postData": "{\"userId\":\"2Vx0BpfujIXxH34QTSpoIEHdsDF3\",\"type\":\"identify\",\"context\":{\"traits\":{\"email\":\"automation.arena1+1@gmail.com\",\"name\":\"Automation Arena\"},\"sessionId\":1779406990193,\"app\":{\"name\":\"RudderLabs JavaScript SDK\",\"namespace\":\"com.rudderlabs.javascript\",\"version\":\"3.31.0\",\"installType\":\"npm\"},\"libr",
+    "status": 200,
+    "responseSnippet": "ok"
+  }
+]

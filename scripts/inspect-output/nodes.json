@@ -1,0 +1,62 @@
+[
+  {
+    "nodeType": "unknown",
+    "classes": "react-flow__nodes",
+    "inViewport": false,
+    "boundingBox": {
+      "top": 223,
+      "left": 832,
+      "width": 912,
+      "height": 675
+    },
+    "textContent": "CONVERSABiografiaHealth Check Test Profile74 charactersAUAutomation1arenaResetarInstagramguimaturana30 publicações"
+  },
+  {
+    "nodeType": "general_skill",
+    "classes": "react-flow__node react-flow__node-general_skill nopan selectable draggable",
+    "inViewport": true,
+    "boundingBox": {
+      "top": 73,
+      "left": 757,
+      "width": 94,
+      "height": 36
+    },
+    "textContent": "CONVERSA"
+  },
+  {
+    "nodeType": "biography",
+    "classes": "react-flow__node react-flow__node-biography nopan selectable draggable",
+    "inViewport": true,
+    "boundingBox": {
+      "top": 405,
+      "left": 270,
+      "width": 216,
+      "height": 89
+    },
+    "textContent": "BiografiaHealth Check Test Profile74 characters"
+  },
+  {
+    "nodeType": "preview",
+    "classes": "react-flow__node react-flow__node-preview nopan selectable draggable",
+    "inViewport": true,
+    "boundingBox": {
+      "top": 223,
+      "left": 682,
+      "width": 300,
+      "height": 454
+    },
+    "textContent": "AUAutomation1arenaResetar"
+  },
+  {
+    "nodeType": "instagram",
+    "classes": "react-flow__node react-flow__node-instagram nopan selectable draggable",
+    "inViewport": true,
+    "boundingBox": {
+      "top": 510,
+      "left": 270,
+      "width": 216,
+      "height": 83
+    },
+    "textContent": "Instagramguimaturana30 publicações"
+  }
+]
