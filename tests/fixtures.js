@@ -14,6 +14,7 @@ const { SettingsTeamPage } = require('../support/Pages/SettingsTeamPage');
 const { SettingsInvitePage } = require('../support/Pages/SettingsInvitePage');
 const { SettingsMembershipPage } = require('../support/Pages/SettingsMembershipPage');
 const { SettingsPaymentsPage } = require('../support/Pages/SettingsPaymentsPage');
+const { HealthCheckPage } = require('../support/Pages/HealthCheckPage');
 const { SettingsBillingPage } = require('../support/Pages/SettingsBillingPage');
 
 const test = playwrightBdd.test.extend({
@@ -76,6 +77,22 @@ const test = playwrightBdd.test.extend({
   },
   settingsBillingPage: async ({ authenticatedPage }, use) => {
     await use(new SettingsBillingPage(authenticatedPage));
+  },
+  healthCheckPage: async ({ authenticatedPage }, use) => {
+    await use(new HealthCheckPage(authenticatedPage));
+  },
+  healthCheckFreshPage: async ({ browser }, use) => {
+    const baseURL = process.env.BASE_URL || 'https://stg-dash-avatar.arena.im';
+    const context = await browser.newContext({ baseURL });
+    const page = await context.newPage();
+    await page.goto('/login');
+    await page.waitForSelector('[placeholder="Email"]', { state: 'visible' });
+    await page.fill('[placeholder="Email"]', process.env.TEST_USER_EMAIL || '');
+    await page.fill('[placeholder="Password"]', process.env.TEST_USER_PASSWORD || '');
+    await page.locator('button[type="submit"]').click();
+    await page.waitForURL(/^(?!.*\/login)/, { timeout: 15000 });
+    await use(new HealthCheckPage(page));
+    await context.close();
   },
 });
 

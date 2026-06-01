@@ -141,7 +141,26 @@ class KnowledgeBasePage {
   }
 
   async openAddMoreMenu() {
-    await this.page.getByRole('button', { name: 'More' }).click();
+    // Text mode: button shows the label "More" (default fresh-session layout)
+    const byName = this.page.getByRole('button', { name: 'More' });
+    if (await byName.isVisible({ timeout: 4000 }).catch(() => false)) {
+      await byName.click();
+      return;
+    }
+    // Icon mode: toolbar collapsed; source-type buttons have no text, aria-label, or title.
+    // The "More" button is always the sibling immediately before the "Skills" button in DOM order.
+    const clicked = await this.page.evaluate(() => {
+      const all = Array.from(document.querySelectorAll('button'));
+      const skillsIdx = all.findIndex(b => (b.textContent || '').trim() === 'Skills');
+      if (skillsIdx > 0) {
+        all[skillsIdx - 1].click();
+        return true;
+      }
+      return false;
+    });
+    if (!clicked) {
+      throw new Error('Could not find "More" button: "Skills" button not found in KB toolbar DOM');
+    }
   }
 
   async clickPlatformButton(platform) {
