@@ -1,0 +1,249 @@
+[
+  {
+    "idx": 0,
+    "text": "Toggle Sidebar",
+    "ariaLabel": "",
+    "title": "",
+    "type": "",
+    "rect": {
+      "top": 26,
+      "left": 187,
+      "width": 28,
+      "height": 28
+    }
+  },
+  {
+    "idx": 1,
+    "text": "",
+    "ariaLabel": "Hide Sidebar",
+    "title": "",
+    "type": "button",
+    "rect": {
+      "top": 32,
+      "left": 280,
+      "width": 56,
+      "height": 56
+    }
+  },
+  {
+    "idx": 2,
+    "text": "YouTube",
+    "ariaLabel": "",
+    "title": "",
+    "type": "button",
+    "rect": {
+      "top": 132,
+      "left": 288,
+      "width": 116,
+      "height": 40
+    }
+  },
+  {
+    "idx": 3,
+    "text": "X",
+    "ariaLabel": "",
+    "title": "",
+    "type": "button",
+    "rect": {
+      "top": 182,
+      "left": 288,
+      "width": 116,
+      "height": 40
+    }
+  },
+  {
+    "idx": 4,
+    "text": "Instagram",
+    "ariaLabel": "",
+    "title": "",
+    "type": "button",
+    "rect": {
+      "top": 232,
+      "left": 288,
+      "width": 116,
+      "height": 40
+    }
+  },
+  {
+    "idx": 5,
+    "text": "Facebook",
+    "ariaLabel": "",
+    "title": "",
+    "type": "button",
+    "rect": {
+      "top": 282,
+      "left": 288,
+      "width": 116,
+      "height": 40
+    }
+  },
+  {
+    "idx": 6,
+    "text": "TikTok",
+    "ariaLabel": "",
+    "title": "",
+    "type": "button",
+    "rect": {
+      "top": 332,
+      "left": 288,
+      "width": 116,
+      "height": 40
+    }
+  },
+  {
+    "idx": 7,
+    "text": "URL",
+    "ariaLabel": "",
+    "title": "",
+    "type": "button",
+    "rect": {
+      "top": 382,
+      "left": 288,
+      "width": 116,
+      "height": 40
+    }
+  },
+  {
+    "idx": 8,
+    "text": "Shopify",
+    "ariaLabel": "",
+    "title": "",
+    "type": "button",
+    "rect": {
+      "top": 432,
+      "left": 288,
+      "width": 116,
+      "height": 40
+    }
+  },
+  {
+    "idx": 9,
+    "text": "Mais",
+    "ariaLabel": "",
+    "title": "",
+    "type": "button",
+    "rect": {
+      "top": 482,
+      "left": 288,
+      "width": 116,
+      "height": 40
+    }
+  },
+  {
+    "idx": 10,
+    "text": "Habilidades",
+    "ariaLabel": "",
+    "title": "",
+    "type": "button",
+    "rect": {
+      "top": 542,
+      "left": 280,
+      "width": 132,
+      "height": 52
+    }
+  },
+  {
+    "idx": 11,
+    "text": "Resetar",
+    "ariaLabel": "",
+    "title": "",
+    "type": "",
+    "rect": {
+      "top": 233,
+      "left": 864,
+      "width": 76,
+      "height": 24
+    }
+  },
+  {
+    "idx": 12,
+    "text": "",
+    "ariaLabel": "Maximizar",
+    "title": "",
+    "type": "button",
+    "rect": {
+      "top": 233,
+      "left": 947,
+      "width": 27,
+      "height": 24
+    }
+  },
+  {
+    "idx": 13,
+    "text": "",
+    "ariaLabel": "Selecionar",
+    "title": "",
+    "type": "",
+    "rect": {
+      "top": 832,
+      "left": 1159,
+      "width": 36,
+      "height": 36
+    }
+  },
+  {
+    "idx": 14,
+    "text": "",
+    "ariaLabel": "Mover",
+    "title": "",
+    "type": "",
+    "rect": {
+      "top": 832,
+      "left": 1195,
+      "width": 36,
+      "height": 36
+    }
+  },
+  {
+    "idx": 15,
+    "text": "",
+    "ariaLabel": "Aumentar zoom",
+    "title": "",
+    "type": "",
+    "rect": {
+      "top": 832,
+      "left": 1247,
+      "width": 36,
+      "height": 36
+    }
+  },
+  {
+    "idx": 16,
+    "text": "",
+    "ariaLabel": "Diminuir zoom",
+    "title": "",
+    "type": "",
+    "rect": {
+      "top": 832,
+      "left": 1283,
+      "width": 36,
+      "height": 36
+    }
+  },
+  {
+    "idx": 17,
+    "text": "",
+    "ariaLabel": "Ajustar visualização",
+    "title": "",
+    "type": "",
+    "rect": {
+      "top": 832,
+      "left": 1319,
+      "width": 36,
+      "height": 36
+    }
+  },
+  {
+    "idx": 18,
+    "text": "https://dev-avatar.arena.im/automation1arena",
+    "ariaLabel": "Compartilhar avatar",
+    "title": "https://dev-avatar.arena.im/automation1arena",
+    "type": "button",
+    "rect": {
+      "top": 32,
+      "left": 1040,
+      "width": 360,
+      "height": 50
+    }
+  }
+]
