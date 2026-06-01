@@ -14,6 +14,7 @@ const { SettingsTeamPage } = require('../support/Pages/SettingsTeamPage');
 const { SettingsInvitePage } = require('../support/Pages/SettingsInvitePage');
 const { SettingsMembershipPage } = require('../support/Pages/SettingsMembershipPage');
 const { SettingsPaymentsPage } = require('../support/Pages/SettingsPaymentsPage');
+const { SettingsBillingPage } = require('../support/Pages/SettingsBillingPage');
 
 const test = playwrightBdd.test.extend({
   signupPage: async ({ page }, use) => {
@@ -72,6 +73,9 @@ const test = playwrightBdd.test.extend({
   },
   settingsPaymentsPage: async ({ authenticatedPage }, use) => {
     await use(new SettingsPaymentsPage(authenticatedPage));
+  },
+  settingsBillingPage: async ({ authenticatedPage }, use) => {
+    await use(new SettingsBillingPage(authenticatedPage));
   },
 });
 
