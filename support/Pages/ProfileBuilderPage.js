@@ -358,6 +358,138 @@ class ProfileBuilderPage {
     await this.page.getByRole('button', { name: /^cancel$/i }).click();
   }
 
+  // ─── PBG010 – Share URL reactive update ──────────────────────────────────────
+  //
+  // Flow: change slug on /profile-builder → save → app redirects to /knowledge-base
+  // (SPA navigation, not a hard refresh). The Share Avatar button must already show
+  // the new slug URL without any additional page reload.
+
+  async updateSlugToUniqueValue() {
+    this._reactiveTestOldSlug = await this.page.locator('#slug').inputValue();
+    // 8-digit suffix keeps slug within 3-20 char limit (e2e = 3 + up to 5 digits)
+    const newSlug = `e2e${String(Date.now()).slice(-5)}`;
+    this._reactiveTestNewSlug = newSlug;
+    await this.fillSlug(newSlug);
+  }
+
+  async saveSlugAndAwaitRedirect() {
+    // Save fires the API call; a slug change triggers an SPA redirect to /knowledge-base.
+    const responsePromise = this.page.waitForResponse(
+      r => r.url().includes('/commerce-ai/') && r.request().method() !== 'GET' && r.status() === 200,
+      { timeout: 20000 },
+    ).catch(() => null);
+    await this.page.getByRole('button', { name: /^save$/i }).first().click();
+    await responsePromise;
+    // Wait for the SPA redirect — slug change always triggers navigation to /knowledge-base
+    await this.page.waitForURL(/knowledge-base/i, { timeout: 20000 });
+    await this.page.waitForTimeout(1000);
+  }
+
+  async clickShareAvatarButton() {
+    // After a slug save the app redirects to /knowledge-base. The Share Avatar button
+    // lives on that page — click it directly without any navigation or refresh.
+    // If the SPA client-side store hasn't updated the slug URL yet, the popover will
+    // still show the old slug, which is the bug this test is designed to catch.
+    await this.page.locator('button[aria-label="Share avatar"]').click();
+    await this.page.locator('[role="menu"][data-state="open"]').waitFor({ state: 'visible', timeout: 8000 });
+  }
+
+  async sharePopoverShouldShowNewSlug() {
+    const menu = this.page.locator('[role="menu"][data-state="open"]');
+    await expect(menu).toContainText(this._reactiveTestNewSlug, { timeout: 5000 });
+  }
+
+  async sharePopoverShouldNotShowOldSlug() {
+    const menu = this.page.locator('[role="menu"][data-state="open"]');
+    const text = await menu.innerText({ timeout: 3000 }).catch(() => '');
+    expect(text).not.toContain(this._reactiveTestOldSlug);
+  }
+
+  async openLinkButtonShouldBeVisible() {
+    await expect(
+      this.page.locator('[role="menu"][data-state="open"]').locator('button[aria-label="Open link"]')
+    ).toBeVisible({ timeout: 5000 });
+  }
+
+  async clickOpenLinkInSharePopover() {
+    const menu = this.page.locator('[role="menu"][data-state="open"]');
+    const openLinkBtn = menu.locator('button[aria-label="Open link"]');
+    await openLinkBtn.waitFor({ state: 'visible', timeout: 5000 });
+    // Button may open the EU page in a new tab or navigate in the same tab.
+    const [newTab] = await Promise.all([
+      this.page.context().waitForEvent('page', { timeout: 5000 }).catch(() => null),
+      openLinkBtn.click(),
+    ]);
+    if (newTab) {
+      await newTab.waitForLoadState('load', { timeout: 15000 });
+      this._euTabFromShare = newTab;
+    } else {
+      await this.page.waitForURL(new RegExp(this._reactiveTestNewSlug), { timeout: 15000 });
+      this._euTabFromShare = this.page;
+    }
+  }
+
+  async euPageShouldOpenAtNewSlugUrl() {
+    const target = this._euTabFromShare || this.page;
+    await expect(target).toHaveURL(new RegExp(this._reactiveTestNewSlug), { timeout: 10000 });
+  }
+
+  async restoreSlugAfterReactiveTest(oldSlug) {
+    const target = oldSlug || this._reactiveTestOldSlug;
+    if (!target) return;
+    await this.visitGeneral();
+    await this.fillSlug(target);
+    const responsePromise = this.page.waitForResponse(
+      r => r.url().includes('/commerce-ai/') && r.request().method() !== 'GET' && r.status() === 200,
+      { timeout: 20000 },
+    ).catch(() => null);
+    await this.page.getByRole('button', { name: /^save$/i }).first().click();
+    await responsePromise;
+    // Wait for redirect (slug restore also redirects) then return to profile-builder
+    await this.page.waitForURL(/knowledge-base/i, { timeout: 20000 }).catch(() => {});
+    await this.page.waitForTimeout(1000);
+  }
+
+  // ─── PBG011 – Title 32-char limit ────────────────────────────────────────────
+
+  async fillTitleWith40Chars() {
+    const input = this.page.locator('#title');
+    await input.clear();
+    // pressSequentially triggers individual keydown/keypress/keyup events so any
+    // JavaScript character-limit handler (maxLength enforcement via React) is exercised.
+    await input.pressSequentially('A'.repeat(40), { delay: 10 });
+    await input.blur();
+  }
+
+  async titleValueShouldBeLimitedTo32Chars() {
+    const value = await this.page.locator('#title').inputValue();
+    expect(
+      value.length,
+      `Title field should be capped at 32 chars but accepted ${value.length}`,
+    ).toBeLessThanOrEqual(32);
+  }
+
+  async titlePreviewShouldNotOverflowLayout() {
+    // The right-panel iframe shows the avatar name — verify it stays within the viewport
+    const iframeEl = this.page.locator('iframe').first();
+    const iframeVisible = await iframeEl.isVisible({ timeout: 3000 }).catch(() => false);
+    if (!iframeVisible) return;
+
+    const frame = this.page.frameLocator('iframe').first();
+    const nameEl = frame.locator('h1, h2, [class*="name"], [class*="title"]').first();
+    const nameVisible = await nameEl.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!nameVisible) return;
+
+    const nameBox = await nameEl.boundingBox().catch(() => null);
+    const iframeBox = await iframeEl.boundingBox().catch(() => null);
+    if (nameBox && iframeBox) {
+      expect(
+        nameBox.x + nameBox.width,
+        'Avatar title should not overflow the preview iframe width',
+      ).toBeLessThanOrEqual(iframeBox.x + iframeBox.width + 5);
+    }
+  }
+
   // ─── Headshot tab — gallery ───────────────────────────────────────────────────
 
   async addNewButtonShouldBeVisible() {

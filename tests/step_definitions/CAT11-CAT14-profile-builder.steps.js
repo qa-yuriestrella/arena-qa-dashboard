@@ -184,6 +184,85 @@ After({ tags: '@pbg-eu' }, async ({ page }) => {
   _cleanupOriginals = { title: null, headline: null, slug: null };
 });
 
+// ─── PBG010 – Share URL reactive update ──────────────────────────────────────
+
+When('I update the slug to a new unique value and save', async ({ profileBuilderPage, page }) => {
+  _cleanupOriginals.slug = await page.locator('#slug').inputValue();
+  _cleanupOriginals.title = await page.locator('#title').inputValue();
+  _cleanupOriginals.headline = await page.locator('#bio').inputValue();
+  await profileBuilderPage.updateSlugToUniqueValue();
+  await profileBuilderPage.saveSlugAndAwaitRedirect();
+});
+
+When('I click the Share Avatar button', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.clickShareAvatarButton();
+});
+
+Then('the share popover should show the new slug in the URL', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.sharePopoverShouldShowNewSlug();
+});
+
+Then('the share popover should not show the old slug', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.sharePopoverShouldNotShowOldSlug();
+});
+
+Then('the Open link button should be visible in the share popover', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.openLinkButtonShouldBeVisible();
+});
+
+When('I click the Open link button in the share popover', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.clickOpenLinkInSharePopover();
+});
+
+Then('the end user page should open at the new slug URL', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.euPageShouldOpenAtNewSlugUrl();
+});
+
+After({ tags: '@pbg-reactive-slug' }, async ({ page }) => {
+  const pb = new ProfileBuilderPage(page);
+  await pb.restoreSlugAfterReactiveTest(_cleanupOriginals.slug);
+  _cleanupOriginals = { title: null, headline: null, slug: null };
+});
+
+// ─── PBG011 – Title 32-character limit ───────────────────────────────────────
+
+When('I fill the title field with a 40-character string', async ({ profileBuilderPage, page }) => {
+  _cleanupOriginals.title = await page.locator('#title').inputValue();
+  _cleanupOriginals.headline = await page.locator('#bio').inputValue();
+  await profileBuilderPage.fillTitleWith40Chars();
+});
+
+After({ tags: '@pbg-char-limits' }, async ({ page }) => {
+  if (_cleanupOriginals.title === null) return;
+  try {
+    const pb = new ProfileBuilderPage(page);
+    await pb.visitGeneral();
+    await pb.fillTitle(_cleanupOriginals.title);
+    await pb.fillHeadline(_cleanupOriginals.headline || '');
+    const saveBtn = page.getByRole('button', { name: /^save$/i }).first();
+    const isEnabled = await saveBtn.isEnabled({ timeout: 3000 }).catch(() => false);
+    if (isEnabled) {
+      await saveBtn.click();
+      await page.waitForFunction(() => {
+        const btns = [...document.querySelectorAll('button')].filter(
+          (b) => /^save$/i.test((b.textContent || '').trim()),
+        );
+        return btns.length === 0 || btns.every((b) => b.disabled);
+      }, { timeout: 10000 }).catch(() => {});
+    }
+  } finally {
+    _cleanupOriginals = { title: null, headline: null, slug: null };
+  }
+});
+
+Then('the title value should be capped at 32 characters', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.titleValueShouldBeLimitedTo32Chars();
+});
+
+Then('the avatar title in the preview should not overflow the layout', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.titlePreviewShouldNotOverflowLayout();
+});
+
 // ─── Headshot tab — gallery ───────────────────────────────────────────────────
 
 Then('the headshot gallery should be visible', async ({ profileBuilderPage }) => {
