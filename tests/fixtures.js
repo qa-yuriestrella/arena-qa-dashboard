@@ -15,6 +15,7 @@ const { SettingsInvitePage } = require('../support/Pages/SettingsInvitePage');
 const { SettingsMembershipPage } = require('../support/Pages/SettingsMembershipPage');
 const { SettingsPaymentsPage } = require('../support/Pages/SettingsPaymentsPage');
 const { HealthCheckPage } = require('../support/Pages/HealthCheckPage');
+const { SettingsBillingPage } = require('../support/Pages/SettingsBillingPage');
 
 const test = playwrightBdd.test.extend({
   signupPage: async ({ page }, use) => {
@@ -48,7 +49,10 @@ const test = playwrightBdd.test.extend({
     await use(new ChatLogPage(authenticatedPage));
   },
   videoAIPage: async ({ authenticatedPage }, use) => {
-    await use(new VideoAIPage(authenticatedPage));
+    const vaiPage = new VideoAIPage(authenticatedPage);
+    await use(vaiPage);
+    // Teardown: delete any video generated during this test (pass or fail)
+    await vaiPage.cleanupGeneratedVideo();
   },
   profileBuilderPage: async ({ authenticatedPage }, use) => {
     await use(new ProfileBuilderPage(authenticatedPage));
@@ -70,6 +74,9 @@ const test = playwrightBdd.test.extend({
   },
   settingsPaymentsPage: async ({ authenticatedPage }, use) => {
     await use(new SettingsPaymentsPage(authenticatedPage));
+  },
+  settingsBillingPage: async ({ authenticatedPage }, use) => {
+    await use(new SettingsBillingPage(authenticatedPage));
   },
   healthCheckPage: async ({ authenticatedPage }, use) => {
     await use(new HealthCheckPage(authenticatedPage));
