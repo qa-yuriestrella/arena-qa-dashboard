@@ -1,6 +1,8 @@
 const { expect } = require('@playwright/test');
 const path = require('path');
 
+const MODERN_EU_URL = process.env.MODERN_EU_URL || 'https://dev-avatar.arena.im/automation2arena';
+
 const TEST_IMAGE_PATH = path.resolve(__dirname, '../fixtures/images/rodrigo rodrigues.jpg');
 const TEST_PRODUCT_IMAGE_PATH = path.resolve(__dirname, '../fixtures/images/product.jpg');
 const TEST_AUDIO_PATH = path.resolve(__dirname, '../fixtures/audios/test-audio.mp3');
@@ -1023,12 +1025,17 @@ class VideoAIPage {
   // ─── End-user page (VAI012) ───────────────────────────────────────────────────
 
   async clickAvatarProfileRing() {
+    // Classic EU: profile image has a ring — click it to open the scene video modal.
+    // Modern EU: video is already the hero background — no ring exists; this method
+    // becomes a no-op and the caller's next assertion (video visible) confirms the hero.
     const span = this.page.locator(
       'span[class*="items-center"][class*="justify-center"][class*="rounded-full"]'
     ).first();
-    await span.waitFor({ state: 'visible', timeout: 10000 });
-    await span.click();
-    await this.page.waitForTimeout(1000);
+    const ringVisible = await span.isVisible({ timeout: 3000 }).catch(() => false);
+    if (ringVisible) {
+      await span.click();
+      await this.page.waitForTimeout(1000);
+    }
   }
 
   async sceneVideoShouldBePlayingOnEU() {
@@ -1043,6 +1050,10 @@ class VideoAIPage {
 
   async sceneVideoShouldNotOpenOnEU() {
     await expect(this.page.locator('video')).not.toBeVisible({ timeout: 5000 });
+  }
+
+  async navigateToModernEndUserPage() {
+    await this.page.goto(MODERN_EU_URL, { waitUntil: 'load', timeout: 15000 });
   }
 
   // ─── Post-test cleanup ────────────────────────────────────────────────────────

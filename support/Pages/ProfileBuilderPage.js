@@ -975,8 +975,9 @@ class ProfileBuilderPage {
     const frame = this.page.frameLocator('iframe[title="Link in bio"]');
     await this._scrollPreviewToBottom();
 
-    // These elements carry the theme color as their background
-    const textBtn    = frame.getByRole('button', { name: 'Text' });
+    // These elements carry the theme color as their background.
+    // Classic preview shows "Text" button; Modern preview shows "Chat".
+    const textBtn    = frame.getByRole('button', { name: /^(text|chat)$/i }).first();
     const createLink = frame.getByRole('link', { name: 'Create myAvatar' });
     const emptyLink  = frame.getByRole('link').filter({ hasText: /^$/ }).first();
 

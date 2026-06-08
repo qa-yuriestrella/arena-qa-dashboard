@@ -226,7 +226,8 @@ class ChatLogPage {
   async _openEuChatAndWaitForWelcome(page) {
     await page.goto(EU_URL);
     await page.waitForLoadState('domcontentloaded');
-    await page.getByRole('button', { name: /^text$/i }).click();
+    // Classic: "Text"; Modern: "Chat"
+    await page.getByRole('button', { name: /^(chat|text)$/i }).click();
 
     const welcomeP = page.waitForResponse(
       res => this._euMessageResponseMatcher(res),

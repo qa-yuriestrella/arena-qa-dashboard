@@ -2,20 +2,22 @@ const { expect } = require('@playwright/test');
 const { faker } = require('@faker-js/faker');
 const { completeGoogleOAuth } = require('../helpers/oauthHelper');
 
-const EU_URL = process.env.EU_URL || 'https://dev-avatar.arena.im/automation1arena';
+const EU_URL        = process.env.EU_URL        || 'https://dev-avatar.arena.im/automation1arena';
+const MODERN_EU_URL = process.env.MODERN_EU_URL || 'https://dev-avatar.arena.im/automation2arena';
 
 class EndUserPage {
-  constructor(page) {
+  constructor(page, euUrl = null) {
     this.page = page;
+    this._euUrl = euUrl || EU_URL;
     this._sessionRequestPromise = null;
     this._messageRequestPromise = null;
     this._callRequestPromise = null;
   }
 
   async visit() {
-    const response = await this.page.goto(EU_URL, { timeout: 10000 });
+    const response = await this.page.goto(this._euUrl, { timeout: 10000 });
     if (response && response.status() === 404) {
-      throw new Error(`End-user page returned 404 – avatar may not exist at ${EU_URL}`);
+      throw new Error(`End-user page returned 404 – avatar may not exist at ${this._euUrl}`);
     }
     await this.page.waitForLoadState('load', { timeout: 10000 });
   }
@@ -23,9 +25,9 @@ class EndUserPage {
   // ─── Entry points ─────────────────────────────────────────────────────────────
 
   async clickProfileButton() {
-    // The profile icon is a web component that exposes a button named "Login" in the
-    // accessibility tree. There are 2 instances on the page (nav + chat); use .first().
-    await this.page.getByRole('button', { name: /^login$/i }).first().click();
+    // Classic: button name "Login"; Modern: aria-label "Log in" (with space).
+    // /^log\s*in$/i matches both.
+    await this.page.getByRole('button', { name: /^log\s*in$/i }).first().click();
   }
 
   async clickSubscribeButton() {
@@ -54,7 +56,8 @@ class EndUserPage {
     this._messageRequestPromise.catch(() => {});
     this._welcomeResponsePromise.catch(() => {});
 
-    await this.page.getByRole('button', { name: /^text$/i }).click();
+    // Classic: "Text"; Modern: "Chat"
+    await this.page.getByRole('button', { name: /^(chat|text)$/i }).click();
   }
 
   async clickCallButton() {
@@ -73,12 +76,14 @@ class EndUserPage {
       { timeout: 30000 }
     );
     this._callRequestPromise.catch(() => {});
-    await this.page.getByRole('button', { name: /^call$/i }).click();
+    // Classic: "Call"; Modern: "Voice"
+    await this.page.getByRole('button', { name: /^(voice|call)$/i }).click();
   }
 
   async clickProfileIconInsideChat() {
     // The chat widget has its own login button (second ac-profile-dropdown-web-component).
-    await this.page.getByRole('button', { name: /^login$/i }).last().click();
+    // Classic: "Login"; Modern: "Log in" (with space).
+    await this.page.getByRole('button', { name: /^log\s*in$/i }).last().click();
   }
 
   // ─── Auth modal ───────────────────────────────────────────────────────────────
@@ -412,6 +417,20 @@ class EndUserPage {
     ).toBeVisible({ timeout: 10000 });
   }
 
+  // ─── Modern hero video ────────────────────────────────────────────────────────
+
+  async videoHeroShouldBeVisible() {
+    await expect(this.page.locator('video')).toBeVisible({ timeout: 10000 });
+  }
+
+  async videoHeroShouldNotBeVisible() {
+    await expect(this.page.locator('video')).not.toBeVisible({ timeout: 5000 });
+  }
+
+  async clickVideoHeroPlayButton() {
+    await this.page.getByRole('button', { name: /play video/i }).first().click();
+  }
+
   // ─── Sections on EU — URL Media ───────────────────────────────────────────────
 
   async sectionShouldBeVisibleOnEU(title) {
@@ -726,7 +745,7 @@ class EndUserPage {
   // ─── EU after purchase ────────────────────────────────────────────────────────
 
   async shouldBeOnEUPage() {
-    await this.page.waitForURL(url => url.href.includes(EU_URL) || url.href.includes('arena.im'), { timeout: 15000 });
+    await this.page.waitForURL(url => url.href.includes(this._euUrl) || url.href.includes('arena.im'), { timeout: 15000 });
   }
 
   async productCardShouldShowText(title, text) {

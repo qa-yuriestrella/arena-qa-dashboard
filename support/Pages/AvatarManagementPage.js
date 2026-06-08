@@ -280,17 +280,18 @@ class AvatarManagementPage {
     await this.page.waitForLoadState('networkidle');
   }
 
-  // Deletes every non-primary avatar one by one, leaving only the primary.
-  // The primary avatar slug is derived from EU_URL so it is never deleted.
+  // Deletes every non-protected avatar one by one, leaving automation1arena and automation2arena.
   async deleteAllNonPrimaryAvatars() {
-    const primarySlug = (process.env.EU_URL || 'automation1arena').split('/').pop();
+    const primarySlug = (process.env.EU_URL        || 'automation1arena').split('/').pop();
+    const modernSlug  = (process.env.MODERN_EU_URL || 'automation2arena').split('/').pop();
 
     while (true) {
       await this.openSwitchAvatarsDialog();
       const nonPrimary = this.switchAvatarsDialog
         .getByRole('button')
         .filter({ hasText: /myavatar\.ai\// })
-        .filter({ hasNotText: primarySlug });
+        .filter({ hasNotText: primarySlug })
+        .filter({ hasNotText: modernSlug });
 
       if (await nonPrimary.count() === 0) {
         await this.closeSwitcher();
