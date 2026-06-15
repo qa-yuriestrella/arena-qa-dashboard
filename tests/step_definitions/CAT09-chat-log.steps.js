@@ -154,3 +154,61 @@ When('I open the end user chat without sending a message', async ({ chatLogPage,
 Then('the welcome-only session should not have user messages within {int} seconds', async ({ chatLogPage }, seconds) => {
   await chatLogPage.welcomeOnlySessionShouldNotHaveUserMessages(seconds);
 });
+
+// ─── Modern EU ────────────────────────────────────────────────────────────────
+
+Given('I am on the modern avatar chat log page', async ({ modernChatLogPage }) => {
+  await modernChatLogPage.visit();
+});
+
+Given('the modern avatar chat log has at least one conversation', async ({ modernChatLogPage, browser }) => {
+  await modernChatLogPage.seedIfEmpty(browser);
+});
+
+Given('I note the current modern avatar conversation count', async ({ modernChatLogPage }) => {
+  await modernChatLogPage.noteConversationCount();
+});
+
+When('I send a message from the modern end user page', async ({ modernChatLogPage, browser }) => {
+  await modernChatLogPage.sendMessageFromEndUser(browser);
+});
+
+Then('a new conversation should appear in the modern avatar chat log', async ({ modernChatLogPage }) => {
+  await modernChatLogPage.waitForNewConversation();
+});
+
+Then('the sent message should be visible in the modern conversation detail', async ({ modernChatLogPage }) => {
+  await modernChatLogPage.sentMessageShouldBeVisibleInConversationDetail();
+});
+
+When('I conduct a dialogue from the modern end user page', async ({ modernChatLogPage, browser }) => {
+  await modernChatLogPage.conductDialogueFromEndUser(browser);
+});
+
+Then('the dialogue messages should appear in the modern avatar chat log', async ({ modernChatLogPage }) => {
+  await modernChatLogPage.dialogueMessagesShouldAppearInChatLog();
+});
+
+When('I send a message from the modern end user page as a logged-in user', async ({ modernChatLogPage, browser }) => {
+  await modernChatLogPage.sendMessageFromLoggedInEuUser(browser);
+});
+
+Then('the logged-in user\'s name should be visible in the modern conversation', async ({ modernChatLogPage }) => {
+  await modernChatLogPage.loggedInUserNameShouldBeVisible();
+});
+
+When('I send a message as anonymous from the modern end user page', async ({ modernChatLogPage, browser }) => {
+  await modernChatLogPage.sendAnonymousMessageFromEU(browser);
+});
+
+When('I sign up and send a follow-up message from the modern end user page', async ({ modernChatLogPage }) => {
+  await modernChatLogPage.signUpAndSendFollowUpInEU();
+});
+
+Then('the signed-up user\'s name should be visible in the modern conversation', async ({ modernChatLogPage }) => {
+  await modernChatLogPage.signedUpUserNameShouldBeVisible();
+});
+
+When('I open the modern end user chat without sending a message', async ({ modernChatLogPage, browser }) => {
+  await modernChatLogPage.openEndUserChatWithoutSendingMessage(browser);
+});

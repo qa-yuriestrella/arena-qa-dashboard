@@ -15,6 +15,10 @@ Given('I am on the Profile Builder General tab', async ({ profileBuilderPage }) 
   await profileBuilderPage.visitGeneral();
 });
 
+Given('I am on the Modern Avatar Profile Builder General tab', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.visitGeneralModern();
+});
+
 Given('I am on the Profile Builder Headshot tab', async ({ profileBuilderPage }) => {
   await profileBuilderPage.visitHeadshot();
 });
@@ -184,6 +188,33 @@ After({ tags: '@pbg-eu' }, async ({ page }) => {
   _cleanupOriginals = { title: null, headline: null, slug: null };
 });
 
+// ─── Modern EU reflection (PBG009M) ──────────────────────────────────────────
+
+Then('the modern end user page should show the updated name {string}', async ({ profileBuilderPage }, title) => {
+  await profileBuilderPage.euShouldShowUpdatedName('e2e-pbtest-m', title);
+});
+
+Then('the modern end user page should show the updated headline {string}', async ({ profileBuilderPage }, headline) => {
+  await profileBuilderPage.euShouldShowUpdatedHeadline(headline);
+});
+
+Then('the modern end user URL should contain the slug {string}', async ({ profileBuilderPage }, slug) => {
+  await profileBuilderPage.euUrlShouldContainSlug(slug);
+});
+
+Then('the Avatar welcome message should arrive in the modern end user chat', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.avatarWelcomeMessageShouldArriveInEuModern();
+});
+
+After({ tags: '@pbg-eu-modern' }, async ({ page }) => {
+  const pb = new ProfileBuilderPage(page);
+  pb._originalTitle = _cleanupOriginals.title;
+  pb._originalHeadline = _cleanupOriginals.headline;
+  pb._originalSlug = _cleanupOriginals.slug;
+  await pb.restoreOriginalProfileSettingsModern();
+  _cleanupOriginals = { title: null, headline: null, slug: null };
+});
+
 // ─── PBG010 – Share URL reactive update ──────────────────────────────────────
 
 When('I update the slug to a new unique value and save', async ({ profileBuilderPage, page }) => {
@@ -221,6 +252,12 @@ Then('the end user page should open at the new slug URL', async ({ profileBuilde
 After({ tags: '@pbg-reactive-slug' }, async ({ page }) => {
   const pb = new ProfileBuilderPage(page);
   await pb.restoreSlugAfterReactiveTest(_cleanupOriginals.slug);
+  _cleanupOriginals = { title: null, headline: null, slug: null };
+});
+
+After({ tags: '@pbg-reactive-slug-modern' }, async ({ page }) => {
+  const pb = new ProfileBuilderPage(page);
+  await pb.restoreSlugAfterReactiveTestModern(_cleanupOriginals.slug);
   _cleanupOriginals = { title: null, headline: null, slug: null };
 });
 
@@ -362,6 +399,58 @@ When('I click Set as my profile', async ({ profileBuilderPage }) => {
 
 Then('the active headshot badge should be visible', async ({ profileBuilderPage }) => {
   await profileBuilderPage.activeHeadshotBadgeShouldBeVisible();
+});
+
+// ─── Headshot tab — gallery preconditions & generic set-active ───────────────
+
+Given('I am on the Modern Profile Builder Headshot tab', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.visitHeadshotModern();
+});
+
+Given('an image headshot is available in the gallery', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.ensureImageHeadshotAvailable();
+});
+
+When('I set the available image headshot as active', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.setAvailableImageHeadshotAsActive();
+});
+
+When('I set the default avatar as active', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.setDefaultAvatarAsActive();
+});
+
+When('I set the default Modern avatar as active', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.setDefaultModernAvatarAsActive();
+});
+
+Given('voice call is enabled for the Modern avatar', async ({ kbPage }) => {
+  // Pre-navigate to /knowledge-base while on the Modern avatar so that
+  // ensureVoiceCallEnabled() skips its this.visit() → ensurePrimaryAvatar() call.
+  await kbPage.page.goto('/knowledge-base');
+  await kbPage.page.waitForLoadState('load');
+  await kbPage.ensureVoiceCallEnabled();
+});
+
+// ─── Headshot tab — EU reflection ────────────────────────────────────────────
+
+Then('the active headshot should be visible in the Classic EU', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.headshotShouldBeVisibleInClassicEu();
+});
+
+Then('the headshot image should not be visible in the Classic EU', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.headshotImageShouldNotBeVisibleInClassicEu();
+});
+
+Then('the active headshot should be visible in the Modern EU chat', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.headshotShouldBeVisibleInModernEuChat();
+});
+
+Then('the headshot image should not be visible in the Modern EU chat', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.headshotImageShouldNotBeVisibleInModernEuChat();
+});
+
+Then('the active headshot should be visible in the Modern EU voice call', async ({ profileBuilderPage }) => {
+  await profileBuilderPage.headshotShouldBeVisibleInModernEuVoiceCall();
 });
 
 // ─── Headshot tab — Edit / Delete ────────────────────────────────────────────

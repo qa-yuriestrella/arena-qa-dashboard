@@ -3,8 +3,9 @@ const { test } = require('../fixtures');
 
 const { Given, When, Then, After } = createBdd(test);
 
-// ─── Cleanup — runs after every CAT19 scenario ───────────────────────────────
-// Deletes all sections whose title starts with "E2E" to prevent accumulation.
+// ─── Cleanup ─────────────────────────────────────────────────────────────────
+// Classic EU: deletes all "E2E*" sections from the primary avatar.
+// Modern EU: deletes all "E2E*" sections from the modern avatar.
 
 After({ tags: '@eupsn-styles or @eupsn-carousel' }, async ({ profileBuilderPage }) => {
   await profileBuilderPage.visitSections().catch(() => {});
@@ -13,6 +14,11 @@ After({ tags: '@eupsn-styles or @eupsn-carousel' }, async ({ profileBuilderPage 
 
 After({ tags: '@eudps-purchase or @eudps-download' }, async ({ profileBuilderPage }) => {
   await profileBuilderPage.visitSections().catch(() => {});
+  await profileBuilderPage.deleteAllTestSections('^E2E').catch(() => {});
+});
+
+After({ tags: '@eu-modern-sections' }, async ({ profileBuilderPage }) => {
+  await profileBuilderPage.visitSectionsModern().catch(() => {});
   await profileBuilderPage.deleteAllTestSections('^E2E').catch(() => {});
 });
 
@@ -219,3 +225,163 @@ Then('the product should be delivered', async ({ endUserPage }) => {
 Then('the product file should be downloaded', async ({ endUserPage }) => {
   await endUserPage.productFileShouldBeDownloaded();
 });
+
+// ─── Modern EU ────────────────────────────────────────────────────────────────
+
+After({ tags: '@eu-modern-sections' }, async ({ profileBuilderPage }) => {
+  await profileBuilderPage.visitSectionsModern().catch(() => {});
+  await profileBuilderPage.deleteAllTestSections('^E2E').catch(() => {});
+});
+
+// ─── Given – Modern EU section setup in dashboard ────────────────────────────
+
+Given('a URL Media section titled {string} with the following links has been saved in the modern avatar dashboard:',
+  async ({ profileBuilderPage }, title, table) => {
+    const urls = table.raw().map(([url]) => url);
+    await profileBuilderPage.createAndSaveURLMediaSectionWithLinks(title, urls, null, { modern: true });
+  }
+);
+
+Given('a Digital Product section titled {string} has been saved in the modern avatar dashboard',
+  async ({ profileBuilderPage }, title) => {
+    await profileBuilderPage.createAndSaveDigitalProductSection({
+      title,
+      price: '9.99',
+      slug: 'e2e-test-product-m',
+      landingTitle: `${title} - Landing Page`,
+      description: 'This is an automated E2E test product for section validation.',
+      ctaText: 'Buy Now!',
+      productURL: 'https://myavatar.ai/',
+    }, { modern: true });
+  }
+);
+
+Given('a Digital Product section with file delivery titled {string} has been saved in the modern avatar dashboard',
+  async ({ profileBuilderPage }, title) => {
+    await profileBuilderPage.createAndSaveDigitalProductSection({
+      title,
+      price: '4.99',
+      slug: 'e2e-file-product-m',
+      landingTitle: `${title} - Landing Page`,
+      description: 'This is an automated E2E test product for file download validation.',
+      ctaText: 'Buy Now!',
+      useFileDelivery: true,
+    }, { modern: true });
+  }
+);
+
+// ─── When – Modern EU section style ──────────────────────────────────────────
+
+When('the section {string} is styled as {string} in the modern avatar dashboard',
+  async ({ profileBuilderPage }, sectionTitle, styleSpec) => {
+    const parts = styleSpec.split('/').map(s => s.trim());
+    const [topStyle, second, third] = parts;
+    const display = third ? second : null;
+    const layout = third || second || null;
+    await profileBuilderPage.setURLMediaSectionStyle(sectionTitle, topStyle, display, layout, { modern: true });
+  }
+);
+
+// ─── When – Modern EU navigation ─────────────────────────────────────────────
+
+When('I navigate to the modern end user page', async ({ endUserModernPage }) => {
+  await endUserModernPage.visit();
+});
+
+When('I navigate to the modern end user page as an unauthenticated user', async ({ endUserModernPage }) => {
+  await endUserModernPage.visit();
+});
+
+// ─── Then – URL Media section on Modern EU ────────────────────────────────────
+
+Then('the section {string} should be visible on the modern end user page', async ({ endUserModernPage }, title) => {
+  await endUserModernPage.sectionShouldBeVisibleOnEU(title);
+});
+
+Then('the section {string} should have at least {int} link cards on the modern end user page',
+  async ({ endUserModernPage }, sectionTitle, n) => {
+    await endUserModernPage.sectionShouldHaveAtLeastNLinkCards(sectionTitle, n);
+  }
+);
+
+When('I click the first link card in section {string} on the modern end user page',
+  async ({ endUserModernPage }, sectionTitle) => {
+    await endUserModernPage.clickFirstLinkCardInSection(sectionTitle);
+  }
+);
+
+Then('the carousel in section {string} should scroll through all {int} links on the modern end user page',
+  async ({ endUserModernPage }, sectionTitle, count) => {
+    await endUserModernPage.carouselInSectionShouldCoverAllLinks(sectionTitle, count);
+  }
+);
+
+Then('the first card in section {string} should have a landscape aspect ratio on the modern end user page',
+  async ({ endUserModernPage }, sectionTitle) => {
+    await endUserModernPage.firstCardInSectionShouldHaveAspectRatio(sectionTitle, 'landscape');
+  }
+);
+
+Then('the first card in section {string} should have a square aspect ratio on the modern end user page',
+  async ({ endUserModernPage }, sectionTitle) => {
+    await endUserModernPage.firstCardInSectionShouldHaveAspectRatio(sectionTitle, 'square');
+  }
+);
+
+Then('the first card in section {string} should have a portrait aspect ratio on the modern end user page',
+  async ({ endUserModernPage }, sectionTitle) => {
+    await endUserModernPage.firstCardInSectionShouldHaveAspectRatio(sectionTitle, 'portrait');
+  }
+);
+
+// ─── Then – Digital Product card on Modern EU ─────────────────────────────────
+
+Then('the product card for {string} should be visible on the modern end user page',
+  async ({ endUserModernPage }, title) => {
+    await endUserModernPage.productCardShouldBeVisible(title);
+  }
+);
+
+Then('the product card should show the CTA button on the modern end user page', async ({ endUserModernPage }) => {
+  await endUserModernPage.productCardShouldShowCTAButton();
+});
+
+When('I click the product card for {string} on the modern end user page', async ({ endUserModernPage }, title) => {
+  await endUserModernPage.clickProductCard(title);
+});
+
+// ─── Then – Landing page on Modern EU ────────────────────────────────────────
+
+Then('the product landing page should be visible on the modern end user page', async ({ endUserModernPage }) => {
+  await endUserModernPage.productLandingPageShouldBeVisible();
+});
+
+Then('the landing page should show the product description on the modern end user page', async ({ endUserModernPage }) => {
+  await endUserModernPage.landingPageShouldHaveDescription();
+});
+
+Then('the landing page should show the CTA button on the modern end user page', async ({ endUserModernPage }) => {
+  await endUserModernPage.landingPageShouldHaveCTAButton();
+});
+
+When('I click the landing page CTA button on the modern end user page', async ({ endUserModernPage }) => {
+  await endUserModernPage.clickLandingPageCTAButton();
+});
+
+// ─── Then – After purchase, Modern EU card state ──────────────────────────────
+
+Then('I should be on the modern end user page', async ({ endUserModernPage }) => {
+  await endUserModernPage.shouldBeOnEUPage();
+});
+
+Then('the product card for {string} should show {string} instead of the CTA button on the modern end user page',
+  async ({ endUserModernPage }, title, buttonText) => {
+    await endUserModernPage.productCardShouldShowText(title, buttonText);
+  }
+);
+
+When('I click {string} on the product card for {string} on the modern end user page',
+  async ({ endUserModernPage }, buttonText, title) => {
+    await endUserModernPage.clickButtonOnProductCard(title, buttonText);
+  }
+);

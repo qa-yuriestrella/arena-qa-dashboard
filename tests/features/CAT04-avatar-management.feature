@@ -48,6 +48,12 @@ Feature: CAT04 - Avatar Management
   # ─── Delete Avatar ───────────────────────────────────────────────────────────
 
   @avm-delete
-  Scenario: AVM005 - Delete button is disabled when only one avatar remains
+  Scenario: AVM005 - Delete button is enabled when multiple avatars exist
     When I navigate to Settings
+    Then the Delete avatar button should be enabled
+
+  @avm-delete @avm009-teardown
+  Scenario: AVM009 - Delete button is disabled when only one avatar exists
+    When I delete all avatars except the primary
+    And I navigate to Settings
     Then the Delete avatar button should be disabled

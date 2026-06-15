@@ -1,7 +1,8 @@
 const { expect } = require('@playwright/test');
 const path = require('path');
+const { ensurePrimaryAvatar } = require('../helpers/avatarHelper');
 
-const TEST_AUDIO_PATH = path.resolve(__dirname, '../fixtures/audios/test-audio.mp3');
+const TEST_AUDIO_PATH = path.resolve(__dirname, '../fixtures/audios/test-audio-35s.mp3');
 
 const platformNameMap = {
   Youtube: 'YouTube',
@@ -50,8 +51,20 @@ class KnowledgeBasePage {
   }
 
   async visit() {
+    await ensurePrimaryAvatar(this.page);
     await this.page.goto('/knowledge-base');
     await this.page.waitForLoadState('load');
+
+    // The admin may redirect to the "Lock in your Identity" setup page for a
+    // newly-created avatar. Claim the identity and re-enter the KB.
+    const lockItIn = this.page.getByRole('button', { name: 'Lock It In' });
+    if (await lockItIn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await lockItIn.click();
+      await this.page.waitForLoadState('networkidle', { timeout: 15000 });
+      await ensurePrimaryAvatar(this.page);
+      await this.page.goto('/knowledge-base');
+      await this.page.waitForLoadState('load');
+    }
 
     // Capture the first avatarIntegrations response for post-count assertions in KB007
     this._integrationDataReady = this.page.waitForResponse(
@@ -69,14 +82,47 @@ class KnowledgeBasePage {
     // Extra wait for content behind the nodes to finish rendering after canvas init
     await this.page.waitForTimeout(2000);
 
-    // Auto-dismiss Avatar Quality dialog whenever it appears (timer-based popup).
-    // Click outside the dialog (top-left corner) instead of Escape so we don't
-    // accidentally close the integration panel that may be open underneath.
+    // Auto-dismiss Avatar Quality panel whenever it appears.
+    // On automation2arena it's a fixed-position panel; on automation1arena it's a Radix popover.
+    // Case-insensitive match handles both "AVATAR QUALITY" (dom text) and "Avatar Quality" (CSS uppercase).
     await this.page.addLocatorHandler(
-      this.page.getByRole('dialog').filter({ hasText: 'Avatar Quality' }),
+      this.page.locator('p, span, div').filter({ hasText: /^avatar quality$/i }),
       async () => {
-        await this.page.mouse.click(10, 10);
-        await this.page.waitForTimeout(300);
+        // Only dismiss while on the KB admin page.
+        if (!this.page.url().includes('/knowledge-base')) return;
+        await this.page.evaluate(() => {
+          const heading = [...document.querySelectorAll('p, span, div')]
+            .find(el => /^avatar quality$/i.test(el.textContent?.trim()));
+          if (!heading) return;
+          // Walk up to find either a Radix popper wrapper OR the fixed-position panel.
+          // Check for Radix wrapper first (automation1arena: Avatar Health popover).
+          let el = heading.parentElement;
+          while (el && el !== document.body) {
+            if (el.hasAttribute('data-radix-popper-content-wrapper')) {
+              el.style.display = 'none';
+              return;
+            }
+            el = el.parentElement;
+          }
+          // Not a Radix popper — find the fixed-position panel (automation2arena).
+          let panel = heading.parentElement;
+          while (panel && panel !== document.body) {
+            if (window.getComputedStyle(panel).position === 'fixed') break;
+            panel = panel.parentElement;
+          }
+          if (!panel || panel === document.body) return;
+          const closeBtn = panel.querySelector(
+            '[aria-label="Close"], [aria-label="close"], [aria-label="Dismiss"]'
+          ) || [...panel.querySelectorAll('button')].find(b => {
+            const label = (b.getAttribute('aria-label') || '').toLowerCase();
+            if (label.includes('close') || label.includes('dismiss')) return true;
+            const txt = b.textContent?.trim();
+            return ['×', '✕', '✖', 'X', 'Close'].includes(txt);
+          });
+          if (closeBtn) closeBtn.click();
+          else panel.style.display = 'none';
+        });
+        await this.page.waitForTimeout(500);
       }
     );
 
@@ -85,20 +131,44 @@ class KnowledgeBasePage {
   }
 
   async _dismissOverlays() {
-    // Dismiss Avatar Quality dialog if already present
+    // Dismiss Avatar Quality panel if present (appears on both automation1arena and automation2arena).
+    // Case-insensitive match handles CSS text-transform: uppercase variants.
+    // Guard: only dismiss on the KB admin page.
     try {
-      const qualityDialog = this.page.getByRole('dialog').filter({ hasText: 'Avatar Quality' });
-      if (await qualityDialog.count() > 0) {
-        await this.page.mouse.click(10, 10);
-        await this.page.waitForTimeout(400);
-      }
-    } catch { }
-
-    // Collapse Avatar Health sidebar panel if expanded
-    try {
-      const btn = this.page.getByRole('button', { name: /avatar health/i });
-      if (await btn.count() > 0 && (await btn.getAttribute('aria-expanded')) === 'true') {
-        await btn.click();
+      if (!this.page.url().includes('/knowledge-base')) return;
+      const panelHeading = this.page.locator('p, span, div').filter({ hasText: /^avatar quality$/i });
+      if (await panelHeading.count() > 0 && await panelHeading.first().isVisible({ timeout: 500 }).catch(() => false)) {
+        await this.page.evaluate(() => {
+          const heading = [...document.querySelectorAll('p, span, div')]
+            .find(el => /^avatar quality$/i.test(el.textContent?.trim()));
+          if (!heading) return;
+          // Check for Radix popper wrapper first (automation1arena).
+          let el = heading.parentElement;
+          while (el && el !== document.body) {
+            if (el.hasAttribute('data-radix-popper-content-wrapper')) {
+              el.style.display = 'none';
+              return;
+            }
+            el = el.parentElement;
+          }
+          // Fixed-position panel (automation2arena).
+          let panel = heading.parentElement;
+          while (panel && panel !== document.body) {
+            if (window.getComputedStyle(panel).position === 'fixed') break;
+            panel = panel.parentElement;
+          }
+          if (!panel || panel === document.body) return;
+          const closeBtn = panel.querySelector(
+            '[aria-label="Close"], [aria-label="close"], [aria-label="Dismiss"]'
+          ) || [...panel.querySelectorAll('button')].find(b => {
+            const label = (b.getAttribute('aria-label') || '').toLowerCase();
+            if (label.includes('close') || label.includes('dismiss')) return true;
+            const txt = b.textContent?.trim();
+            return ['×', '✕', '✖', 'X', 'Close'].includes(txt);
+          });
+          if (closeBtn) closeBtn.click();
+          else panel.style.display = 'none';
+        });
         await this.page.waitForTimeout(400);
       }
     } catch { }
@@ -1277,11 +1347,37 @@ class KnowledgeBasePage {
   // ─── KB023–KB025: Skills ──────────────────────────────────────────────────────
 
   async clickSkillsButton() {
+    // Dismiss any Radix popper (e.g. Avatar Health panel) blocking pointer events.
+    const popper = this.page.locator('[data-radix-popper-content-wrapper]');
+    if (await popper.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await this.page.keyboard.press('Escape');
+      await popper.waitFor({ state: 'hidden', timeout: 3000 }).catch(async () => {
+        // Escape didn't close it — hide via JS as last resort
+        await this.page.evaluate(() => {
+          document.querySelectorAll('[data-radix-popper-content-wrapper]')
+            .forEach(el => { el.style.display = 'none'; });
+        });
+      });
+      await this.page.waitForTimeout(300);
+    }
     await this.page.getByRole('button', { name: 'Skills' }).click();
   }
 
   async clickSkillInPopover(skillName) {
-    await this.page.getByRole('button', { name: skillName }).click();
+    // Retry loop: if the Skills popover was inadvertently closed (e.g. by the Avatar Quality
+    // panel dismiss handler), re-open it and try again.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const btn = this.page.getByRole('button', { name: skillName });
+      const visible = await btn.isVisible({ timeout: 4000 }).catch(() => false);
+      if (visible) {
+        await btn.click();
+        return;
+      }
+      // Button not found: re-open the Skills popover and retry
+      await this._dismissOverlays();
+      await this.clickSkillsButton();
+    }
+    throw new Error(`Could not find skill "${skillName}" in Skills popover after 3 attempts`);
   }
 
   async skillDrawerShouldBeVisible() {
@@ -1365,17 +1461,112 @@ class KnowledgeBasePage {
   }
 
   async uploadVoiceAudioFile() {
-    // The "Upload file" button creates a dynamic input — intercept with filechooser event
-    const fileChooserPromise = this.page.waitForEvent('filechooser');
-    await this.page.getByRole('button', { name: /upload file/i }).click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles(TEST_AUDIO_PATH);
-    // After upload, the toggle appears once the blob is ready
-    await this.voiceCallToggleShouldBeVisible();
+    // If the upload button is not present, audio already exists — skip upload.
+    const uploadButtonVisible = await this.page.getByText(/upload existing recording/i).first()
+      .isVisible({ timeout: 2000 }).catch(() => false);
+    if (!uploadButtonVisible) {
+      return;
+    }
+
+    // The React component captures a reference to showOpenFilePicker at module
+    // load (e.g. via .bind or an early assignment), so overriding window.showOpen-
+    // FilePicker after the page is already running has no effect.  The fix is to
+    // inject the override via addInitScript and then navigate to KB — the init
+    // script runs before any React modules initialize, so the mock is the only
+    // reference the component ever captures.
+    const audioBase64 = require('fs').readFileSync(TEST_AUDIO_PATH).toString('base64');
+    await this.page.addInitScript(() => {
+      window.__fileInputLog = [];
+
+      // Log addEventListener on file inputs
+      const origAdd = EventTarget.prototype.addEventListener;
+      EventTarget.prototype.addEventListener = function (type, fn, ...args) {
+        if (this instanceof HTMLInputElement && this.type === 'file') {
+          window.__fileInputLog.push({ action: 'addListener', type });
+          console.log(`[FILE-INPUT] addEventListener('${type}')`);
+          const wrapped = function (...a) {
+            console.log(`[FILE-INPUT] '${type}' fired, files:`, this.files?.length ?? -1);
+            window.__fileInputLog.push({ action: 'fired', type, filesLen: this.files?.length ?? -1 });
+            return fn.apply(this, a);
+          };
+          return origAdd.call(this, type, wrapped, ...args);
+        }
+        return origAdd.call(this, type, fn, ...args);
+      };
+
+      // Remove showOpenFilePicker so the component uses the file input fallback path
+      // (the fallback path attaches event listeners; the showOpenFilePicker path doesn't)
+      delete window.showOpenFilePicker;
+      console.log('[FILE-INPUT] showOpenFilePicker deleted, using fallback path');
+
+      // Append file input INSIDE the dialog so change events bubble through it
+      // (the component likely uses event delegation on the dialog element)
+      const originalClick = HTMLInputElement.prototype.click;
+      HTMLInputElement.prototype.click = function () {
+        if (this.type === 'file' && !document.body.contains(this)) {
+          const dialog = document.querySelector('[role="dialog"]') || document.body;
+          console.log('[FILE-INPUT] click() — appending to', dialog.getAttribute('role') || 'body');
+          this.style.cssText = 'position:absolute;left:-9999px;top:-9999px;opacity:0;pointer-events:none;';
+          dialog.appendChild(this);
+        }
+        return originalClick.call(this);
+      };
+    });
+
+    // Close the dialog and navigate to KB — the init script applies on this load
+    await this.page.keyboard.press('Escape');
+    await this.page.waitForTimeout(300);
+    await this.page.goto('/knowledge-base');
+    await this.page.waitForLoadState('load');
+    await this.page.locator('.react-flow__node').first()
+      .waitFor({ state: 'visible', timeout: 30000 });
+    await this.page.waitForTimeout(1000);
+
+    // Re-open the Audio Skill dialog with the override now in place.
+    // Use force:true on the skill button — the addInitScript addEventListener override
+    // can cause the popover button to remain "not stable" due to micro-layout thrashing.
+    await this.clickSkillsButton();
+    await this.page.waitForTimeout(500);
+    await this.page.getByRole('button', { name: 'Make Audio Calls' }).click({ force: true });
+    await this.page.getByRole('dialog', { name: /audio skill/i })
+      .waitFor({ state: 'visible', timeout: 8000 });
+
+    // Listen to page console so [FILE-INPUT] messages from the init script show up
+    const consoleMessages = [];
+    const onConsole = msg => {
+      if (msg.text().startsWith('[FILE-INPUT]')) {
+        consoleMessages.push(msg.text());
+        console.log('[TEST]', msg.text());
+      }
+    };
+    this.page.on('console', onConsole);
+
+    // The init script ensures the file input is in the DOM before native click fires.
+    // Use waitForEvent('filechooser') + setFiles — this properly closes the native
+    // dialog and dispatches change events through the same path as real user selection.
+    const [fc] = await Promise.all([
+      this.page.waitForEvent('filechooser', { timeout: 8000 }),
+      this.page.getByText(/upload existing recording/i).first().click(),
+    ]);
+    await fc.setFiles(TEST_AUDIO_PATH);
+
+    // Wait and log what the input log shows
+    await this.page.waitForTimeout(2000);
+    const fileInputLog = await this.page.evaluate(() => window.__fileInputLog || []);
+    console.log('[KB022] File input log:', JSON.stringify(fileInputLog));
+
+    this.page.off('console', onConsole);
+
+    // After upload, the toggle appears once the blob is ready.
+    // For avatars that already have a Settings tab (existing voice clone infrastructure),
+    // the toggle lives on Settings — _ensureVoiceToggleVisible handles the tab switch.
+    await this._ensureVoiceToggleVisible();
   }
 
   async clickRecordNewAudio() {
-    await this.page.getByRole('button', { name: /record new audio now/i }).click();
+    // Card may be a button or a clickable div — try both
+    const card = this.page.getByText(/record new audio now/i).first();
+    await card.click();
   }
 
   async recordingCountdownShouldBeVisible() {
@@ -1427,26 +1618,158 @@ class KnowledgeBasePage {
   }
 
   async voiceCallToggleShouldBeVisible() {
-    // Switch appears once recordedBlob is set (after stopping)
-    await expect(
-      this.page.getByRole('switch').first()
-    ).toBeVisible({ timeout: 5000 });
+    // When audio already exists the toggle is on the Settings tab, not "Your voice".
+    // _ensureVoiceToggleVisible navigates to the correct tab and returns the locator.
+    const toggle = await this._ensureVoiceToggleVisible();
+    await expect(toggle).toBeVisible({ timeout: 5000 });
   }
 
   async enableVoiceCallSkill() {
-    // Intercept the create-voice-clone Supabase edge function request
-    this._voiceCloneResponsePromise = this.page.waitForResponse(
-      (res) => res.url().includes('create-voice-clone'),
-      { timeout: 30000 }
-    );
     const toggle = this.page.getByRole('switch').first();
     if ((await toggle.getAttribute('data-state')) !== 'checked') {
+      // Intercept the create-voice-clone Supabase edge function request
+      this._voiceCloneResponsePromise = this.page.waitForResponse(
+        (res) => res.url().includes('create-voice-clone'),
+        { timeout: 30000 }
+      );
       await toggle.click();
+    } else {
+      // Clone already exists — mark so voiceCloneRequestShouldSucceed skips.
+      this._voiceCloneResponsePromise = null;
     }
+  }
+
+  // Lightweight toggle ON — used after the clone already exists (no create-voice-clone call expected).
+  // Navigates to the Settings tab if the toggle is not visible on the current tab
+  // (when the voice clone already exists, the enable/disable switch lives in Settings).
+  // Scoped to the skill drawer panel (.fixed.right-0.top-0) so page-level switches
+  // (e.g. React Flow toggle nodes in automation2arena) are never matched by accident.
+  async _ensureVoiceToggleVisible() {
+    // Use the Audio Skill dialog role locator — same as ensureVoiceCallEnabled uses,
+    // more reliable than CSS class selector which varies across avatar types.
+    const drawer = this.page.getByRole('dialog', { name: /audio skill/i });
+    // Re-open the drawer if it was closed
+    const drawerVisible = await drawer.isVisible({ timeout: 2000 }).catch(() => false);
+    if (!drawerVisible) {
+      await this._dismissOverlays();
+      await this.clickSkillsButton();
+      await this.clickSkillInPopover('Make Audio Calls');
+      await drawer.waitFor({ state: 'visible', timeout: 10000 });
+    }
+    const toggle = drawer.getByRole('switch').first();
+    const visibleOnCurrentTab = await toggle.isVisible({ timeout: 2000 }).catch(() => false);
+    if (!visibleOnCurrentTab) {
+      // Audio Skill drawer "Settings" tab-like buttons do NOT carry role="tab" —
+      // use text match instead of ARIA role.
+      await drawer.getByText('Settings', { exact: true }).first().click();
+      await toggle.waitFor({ state: 'visible', timeout: 5000 });
+    }
+    return toggle;
+  }
+
+  // Waits for a commerce-ai response where the voice-clone action reflects
+  // the expected enabled state. This filters out pre-click polling responses
+  // that would otherwise resolve the promise early.
+  _setupVoiceStateResponseInterceptor(expectedEnabled) {
+    return this.page.waitForResponse(
+      async (res) => {
+        if (!res.url().includes('commerce-ai')) return false;
+        try {
+          const json = await res.json();
+          const actions = json?.actions || [];
+          const voiceAction = actions.find(a => a.type === 'voice-clone');
+          return voiceAction !== undefined && voiceAction.enabled === expectedEnabled;
+        } catch {
+          return false;
+        }
+      },
+      { timeout: 15000 }
+    ).catch(() => null);
+  }
+
+  async enableVoiceCallToggle() {
+    await this.page.getByRole('dialog', { name: /audio skill/i }).waitFor({ state: 'visible', timeout: 10000 });
+    const toggle = await this._ensureVoiceToggleVisible();
+    if ((await toggle.getAttribute('data-state')) !== 'checked') {
+      const stateConfirmed = this._setupVoiceStateResponseInterceptor(true);
+      await toggle.click();
+      const result = await stateConfirmed;
+      if (result === null) {
+        await this.page.waitForTimeout(8000);
+      }
+    }
+    await this.page.keyboard.press('Escape');
+    await this.page.waitForTimeout(500);
+  }
+
+  async disableVoiceCallSkill() {
+    await this.page.getByRole('dialog', { name: /audio skill/i }).waitFor({ state: 'visible', timeout: 10000 });
+    const toggle = await this._ensureVoiceToggleVisible();
+    if ((await toggle.getAttribute('data-state')) === 'checked') {
+      const stateConfirmed = this._setupVoiceStateResponseInterceptor(false);
+      await toggle.click();
+      const result = await stateConfirmed;
+      // If commerce-ai didn't respond in time (non-commerce-ai avatar or slow poll),
+      // give extra time for the backend state change to propagate before the EU visits.
+      if (result === null) {
+        await this.page.waitForTimeout(8000);
+      }
+    }
+    await this.page.keyboard.press('Escape');
+    await this.page.waitForTimeout(500);
+  }
+
+  // Precondition helper: ensures the voice call skill is enabled for this avatar.
+  // Determines what action is needed by inspecting the dialog state directly:
+  //   - "Upload existing recording" visible → no audio yet, must upload then enable
+  //   - toggle visible on "Your voice" tab → audio ready, just enable (creates clone)
+  //   - neither → clone already created, toggle is on "Settings" tab
+  async ensureVoiceCallEnabled() {
+    if (!this.page.url().includes('/knowledge-base')) {
+      await this.visit();
+    }
+
+    await this.clickSkillsButton();
+    await this.clickSkillInPopover('Make Audio Calls');
+
+    const audioDialog = this.page.getByRole('dialog', { name: /audio skill/i });
+    await audioDialog.waitFor({ state: 'visible', timeout: 8000 });
+
+    const needsUpload = await this.page.getByText(/upload existing recording/i).first()
+      .isVisible({ timeout: 2000 }).catch(() => false);
+
+    if (needsUpload) {
+      // No audio at all — uploadVoiceAudioFile closes this dialog, navigates,
+      // re-opens the dialog and uploads; toggle appears afterwards (may be on Settings tab).
+      await this.uploadVoiceAudioFile();
+      const toggle = await this._ensureVoiceToggleVisible();
+      if ((await toggle.getAttribute('data-state')) !== 'checked') {
+        this._voiceCloneResponsePromise = this.page.waitForResponse(
+          (res) => res.url().includes('create-voice-clone'),
+          { timeout: 30000 }
+        );
+        await toggle.click();
+        await this._voiceCloneResponsePromise.catch(() => {});
+      }
+      await this.page.keyboard.press('Escape');
+      await this.page.waitForTimeout(500);
+      return;
+    }
+
+    // Audio exists (upload button not present) — find and enable the toggle.
+    // When the clone was already created the toggle lives on the Settings tab.
+    const toggle = await this._ensureVoiceToggleVisible();
+    if ((await toggle.getAttribute('data-state')) !== 'checked') {
+      await toggle.click();
+      await this.page.waitForTimeout(1500);
+    }
+    await this.page.keyboard.press('Escape');
+    await this.page.waitForTimeout(500);
   }
 
   async voiceCloneRequestShouldSucceed() {
     const response = await this._voiceCloneResponsePromise;
+    if (response === null) return; // clone already existed before this run — skip
     const body = await response.json();
     // Supabase edge function returns { success: true, voice_id: '...' }
     expect(body.success).toBe(true);

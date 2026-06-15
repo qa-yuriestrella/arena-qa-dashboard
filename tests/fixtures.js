@@ -1,4 +1,6 @@
 const playwrightBdd = require('playwright-bdd');
+
+const MODERN_EU_URL = process.env.MODERN_EU_URL || 'https://dev-avatar.arena.im/automation2arena';
 const { SignupPage } = require('../support/Pages/SignupPage');
 const { LoginPage } = require('../support/Pages/LoginPage');
 const { HomePage } = require('../support/Pages/HomePage');
@@ -6,6 +8,7 @@ const { KnowledgeBasePage } = require('../support/Pages/KnowledgeBasePage');
 const { OnboardingPage } = require('../support/Pages/OnboardingPage');
 const { EndUserPage } = require('../support/Pages/EndUserPage');
 const { ChatLogPage } = require('../support/Pages/ChatLogPage');
+const { ModernChatLogPage } = require('../support/Pages/ModernChatLogPage');
 const { VideoAIPage } = require('../support/Pages/VideoAIPage');
 const { ProfileBuilderPage } = require('../support/Pages/ProfileBuilderPage');
 const { AudiencePage } = require('../support/Pages/AudiencePage');
@@ -45,8 +48,14 @@ const test = playwrightBdd.test.extend({
   endUserPage: async ({ page }, use) => {
     await use(new EndUserPage(page));
   },
+  endUserModernPage: async ({ page }, use) => {
+    await use(new EndUserPage(page, MODERN_EU_URL));
+  },
   chatLogPage: async ({ authenticatedPage }, use) => {
     await use(new ChatLogPage(authenticatedPage));
+  },
+  modernChatLogPage: async ({ authenticatedPage }, use) => {
+    await use(new ModernChatLogPage(authenticatedPage));
   },
   videoAIPage: async ({ authenticatedPage }, use) => {
     const vaiPage = new VideoAIPage(authenticatedPage);

@@ -92,3 +92,27 @@ Feature: CAT11 - Profile Builder – General Tab
     And the share popover should not show the old slug
     When I click the Open link button in the share popover
     Then the end user page should open at the new slug URL
+
+  # ─── Modern EU reflection ──────────────────────────────────────────────────────
+
+  Rule: Modern EU
+
+    Background:
+      Given I am on the Modern Avatar Profile Builder General tab
+
+    @pbg-eu-modern
+    Scenario: PBG009M - Changes saved in Modern Profile Builder are reflected in the Modern End User page
+      When I save the profile with title "E2E Avatar Name", headline "E2E headline text", slug "e2e-pbtest-m", and language "English"
+      Then the modern end user page should show the updated name "E2E Avatar Name"
+      And the modern end user page should show the updated headline "E2E headline text"
+      And the modern end user URL should contain the slug "e2e-pbtest-m"
+      And the Avatar welcome message should arrive in the modern end user chat
+
+    @pbg-reactive-slug-modern
+    Scenario: PBG010M - Modern Share URL updates to reflect new slug after save without hard refresh
+      When I update the slug to a new unique value and save
+      And I click the Share Avatar button
+      Then the share popover should show the new slug in the URL
+      And the share popover should not show the old slug
+      When I click the Open link button in the share popover
+      Then the end user page should open at the new slug URL

@@ -2,7 +2,7 @@ const { createBdd } = require('playwright-bdd');
 const { expect } = require('@playwright/test');
 const { test } = require('../fixtures');
 
-const { Given, When, Then } = createBdd(test);
+const { Given, When, Then, After } = createBdd(test);
 
 // Background: "Given I am logged in and on the home page" is shared from CAT05-home.steps.js
 
@@ -108,6 +108,10 @@ When('I delete all non-primary avatars', async ({ avatarManagementPage }) => {
   await avatarManagementPage.deleteAllNonPrimaryAvatars();
 });
 
+When('I delete all avatars except the primary', async ({ avatarManagementPage }) => {
+  await avatarManagementPage.deleteAllAvatarsExceptPrimary();
+});
+
 When('I navigate to Settings', async ({ avatarManagementPage }) => {
   await avatarManagementPage.navigateToSettings();
 });
@@ -144,4 +148,14 @@ Then('the current avatar should be deleted', async ({ avatarManagementPage }) =>
 
 Then('I should be on the dashboard of another avatar', async ({ avatarManagementPage }) => {
   await avatarManagementPage.shouldBeOnDashboardOfAnotherAvatar();
+});
+
+// ─── Teardown ─────────────────────────────────────────────────────────────────
+
+After({ tags: '@avm-create' }, async ({ avatarManagementPage }) => {
+  await avatarManagementPage.deleteAllNonPrimaryAvatars();
+});
+
+After({ tags: '@avm009-teardown' }, async ({ avatarManagementPage }) => {
+  await avatarManagementPage.recreateModernAvatar();
 });

@@ -1,4 +1,5 @@
 const { expect } = require('@playwright/test');
+const { ensurePrimaryAvatar } = require('../helpers/avatarHelper');
 
 class AvatarManagementPage {
   constructor(page) {
@@ -161,19 +162,17 @@ class AvatarManagementPage {
     ).toBeVisible({ timeout: 10000 });
   }
 
-  async completeNewAvatarCreationFlowWithoutPayment() {
+  async _createAvatarWithSlug(slug) {
     await this.page.goto('/new');
     await this.page.waitForLoadState('networkidle');
 
-    // Step 1: Slug claim — the submit button is an icon-only arrow, 3 DOM levels above the input
     const slugInput = this.page.locator(
       'input[name*="slug"], input[placeholder*="slug"]'
     ).first();
     await slugInput.waitFor({ state: 'visible', timeout: 10000 });
-    await slugInput.fill(`ta-${Date.now().toString().slice(-8)}`);
+    await slugInput.fill(slug);
     await slugInput.locator('../../..').getByRole('button').click({ timeout: 10000 });
 
-    // Steps 2-N: the creation wizard stays at /new — wait for and click "Next Step" each time
     const nextStepBtn = () => this.page.getByRole('button', { name: /next step/i });
     for (let i = 0; i < 6; i++) {
       try {
@@ -185,15 +184,25 @@ class AvatarManagementPage {
       }
     }
 
-    // Final step may show a dedicated finish/create button before redirecting
     const finishBtn = this.page.getByRole('button', { name: /finish|create avatar|done/i });
     if (await finishBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
       await finishBtn.click();
     }
 
-    // Wait for actual navigation away from /new (all steps complete)
     await this.page.waitForURL(/^(?!.*\/new)/, { timeout: 30000 });
     await this.page.waitForLoadState('networkidle', { timeout: 15000 });
+
+    // After wizard, the admin may show the "Lock in your Identity" onboarding page.
+    // Claim the identity so subsequent tests don't get redirected to this setup wizard.
+    const lockItIn = this.page.getByRole('button', { name: 'Lock It In' });
+    if (await lockItIn.isVisible({ timeout: 5000 }).catch(() => false)) {
+      await lockItIn.click();
+      await this.page.waitForLoadState('networkidle', { timeout: 15000 });
+    }
+  }
+
+  async completeNewAvatarCreationFlowWithoutPayment() {
+    await this._createAvatarWithSlug(`ta-${Date.now().toString().slice(-8)}`);
   }
 
   async shouldBeRedirectedToDashboard() {
@@ -280,10 +289,13 @@ class AvatarManagementPage {
     await this.page.waitForLoadState('networkidle');
   }
 
-  // Deletes every non-primary avatar one by one, leaving only the primary.
-  // The primary avatar slug is derived from EU_URL so it is never deleted.
-  async deleteAllNonPrimaryAvatars() {
+  // Deletes every avatar except automation1arena, leaving only the primary.
+  // Used by AVM009 to reach the single-avatar state needed to assert the delete button is disabled.
+  async deleteAllAvatarsExceptPrimary() {
     const primarySlug = (process.env.EU_URL || 'automation1arena').split('/').pop();
+
+    await ensurePrimaryAvatar(this.page);
+    await this.page.waitForTimeout(2000);
 
     while (true) {
       await this.openSwitchAvatarsDialog();
@@ -297,9 +309,60 @@ class AvatarManagementPage {
         break;
       }
 
-      // Switch to the non-primary avatar so we can delete it
       await nonPrimary.first().click();
-      await this.page.waitForLoadState('networkidle', { timeout: 15000 });
+      await this.switchAvatarsDialog.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+      await this.page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+      await this._dismissPopper();
+
+      await this.navigateToSettings();
+      await this.clickDeleteAvatarButton();
+      await this.deleteConfirmationModalShouldBeVisible();
+      await this.confirmAvatarDeletion();
+      await this.page.waitForURL(/^(?!.*\/settings)/, { timeout: 15000 }).catch(() => {});
+      await this.page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+      await this._dismissPopper();
+    }
+
+    await this.navigateToSettings();
+  }
+
+  // Recreates automation2arena after it was deleted by deleteAllAvatarsExceptPrimary.
+  // Slug reuse is allowed as long as no avatar with that slug currently exists.
+  async recreateModernAvatar() {
+    const modernSlug = (process.env.MODERN_EU_URL || 'automation2arena').split('/').pop();
+    await ensurePrimaryAvatar(this.page);
+    await this._createAvatarWithSlug(modernSlug);
+  }
+
+  // Deletes every non-protected avatar one by one, leaving automation1arena and automation2arena.
+  async deleteAllNonPrimaryAvatars() {
+    const primarySlug = (process.env.EU_URL        || 'automation1arena').split('/').pop();
+    const modernSlug  = (process.env.MODERN_EU_URL || 'automation2arena').split('/').pop();
+
+    // Ensure we are on the dashboard with the primary avatar selected.
+    // ensurePrimaryAvatar handles /new, onboarding, and other unexpected states.
+    await ensurePrimaryAvatar(this.page);
+    // Let dialog animations and any post-switch API settle before interacting again.
+    await this.page.waitForTimeout(2000);
+
+    while (true) {
+      await this.openSwitchAvatarsDialog();
+      const nonPrimary = this.switchAvatarsDialog
+        .getByRole('button')
+        .filter({ hasText: /myavatar\.ai\// })
+        .filter({ hasNotText: primarySlug })
+        .filter({ hasNotText: modernSlug });
+
+      if (await nonPrimary.count() === 0) {
+        await this.closeSwitcher();
+        break;
+      }
+
+      // Switch to the non-primary avatar so we can delete it.
+      // Don't use networkidle here — SPA persistent connections cause it to hang.
+      await nonPrimary.first().click();
+      await this.switchAvatarsDialog.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+      await this.page.waitForLoadState('domcontentloaded', { timeout: 10000 });
       await this._dismissPopper();
 
       // Delete it
@@ -307,7 +370,8 @@ class AvatarManagementPage {
       await this.clickDeleteAvatarButton();
       await this.deleteConfirmationModalShouldBeVisible();
       await this.confirmAvatarDeletion();
-      await this.page.waitForLoadState('networkidle', { timeout: 15000 });
+      await this.page.waitForURL(/^(?!.*\/settings)/, { timeout: 15000 }).catch(() => {});
+      await this.page.waitForLoadState('domcontentloaded', { timeout: 10000 });
       await this._dismissPopper();
     }
 

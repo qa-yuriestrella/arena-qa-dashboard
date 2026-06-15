@@ -174,10 +174,48 @@ Feature: CAT06 - Knowledge Base
     Then the voice clone request should succeed
     And the Voice Calls node should be visible in the knowledge base
 
+  @kb-skills @kb-voice-teardown
+  Scenario: KB023 - Voice call buttons disappear and reappear in classic EU when skill is toggled
+    Given the voice call skill is enabled
+    When I click the Skills button
+    And I click the "Make Audio Calls" skill
+    And I disable the voice call skill
+    When I visit the classic end-user page
+    Then the voice call button should not be visible on the EU home page
+    When I open the text chat
+    Then the voice call icon should not be visible inside the chat
+    When I navigate back to the knowledge base
+    And I click the Skills button
+    And I click the "Make Audio Calls" skill
+    And I enable the voice call toggle
+    When I visit the classic end-user page
+    Then the voice call button should be visible on the EU home page
+    When I open the text chat
+    Then the voice call icon should be visible inside the chat
+
+  @kb-skills @kb-voice-modern-teardown
+  Scenario: KB024 - Voice call buttons disappear and reappear in modern EU when skill is toggled
+    Given the voice call skill is enabled for the modern avatar
+    When I click the Skills button
+    And I click the "Make Audio Calls" skill
+    And I disable the voice call skill
+    When I visit the modern end-user page
+    Then the voice call button should not be visible on the EU home page
+    When I open the text chat
+    Then the voice call icon should not be visible inside the chat
+    When I navigate back to the modern avatar knowledge base
+    And I click the Skills button
+    And I click the "Make Audio Calls" skill
+    And I enable the voice call toggle
+    When I visit the modern end-user page
+    Then the voice call button should be visible on the EU home page
+    When I open the text chat
+    Then the voice call icon should be visible inside the chat
+
   # ─── Canvas controls ──────────────────────────────────────────────────────────
 
   @kb-controls
-  Scenario: KB023 - Canvas mode buttons, zoom controls and fullscreen all work correctly
+  Scenario: KB025 - Canvas mode buttons, zoom controls and fullscreen all work correctly
     Then the Select mode should be active
     When I click the Move mode button
     Then the Move mode should be active

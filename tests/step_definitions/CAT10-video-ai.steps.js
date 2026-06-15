@@ -74,6 +74,10 @@ When('I upload the avatar image and save the crop', async ({ videoAIPage }) => {
   await videoAIPage.uploadAvatarImageAndSaveCrop();
 });
 
+When('I upload the Modern avatar image and save the crop', async ({ videoAIPage }) => {
+  await videoAIPage.uploadAvatarImageModernAndSaveCrop();
+});
+
 When('I upload the product image', async ({ videoAIPage }) => {
   await videoAIPage.uploadProductImage();
 });
@@ -322,6 +326,28 @@ When('I remove the video from my profile', async ({ videoAIPage }) => {
 
 Then('the publish request should be fired', async ({ videoAIPage }) => {
   await videoAIPage.publishRequestShouldBeFired();
+});
+
+// ─── VAI012 / VAI013: Avatar switching ───────────────────────────────────────
+
+Given('I am using the Classic avatar', async ({ videoAIPage }) => {
+  await videoAIPage.switchToPrimaryAvatarAndVisit();
+});
+
+Given('I am using the Modern avatar', async ({ videoAIPage }) => {
+  await videoAIPage.switchToModernAvatarAndVisit();
+});
+
+When('I navigate to the Modern end user page', async ({ videoAIPage }) => {
+  await videoAIPage.navigateToModernEndUserPage();
+});
+
+Then('the hero video should be visible', async ({ videoAIPage }) => {
+  await videoAIPage.heroVideoShouldBeVisible();
+});
+
+Then('the default avatar image should be visible in the hero', async ({ videoAIPage }) => {
+  await videoAIPage.defaultAvatarImageShouldBeVisible();
 });
 
 // ─── VAI014: Regenerate ───────────────────────────────────────────────────────

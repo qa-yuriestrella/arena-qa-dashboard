@@ -1,10 +1,12 @@
 const { expect } = require('@playwright/test');
 const path = require('path');
-const { ensurePrimaryAvatar } = require('../helpers/avatarHelper');
+const { ensurePrimaryAvatar, ensureModernAvatar } = require('../helpers/avatarHelper');
 
 const TEST_IMAGE_PATH = path.resolve(__dirname, '../fixtures/images/test-face.jpg');
-const EU_URL = process.env.EU_URL || 'https://dev-avatar.arena.im/automation1arena';
+const EU_URL        = process.env.EU_URL        || 'https://dev-avatar.arena.im/automation1arena';
+const MODERN_EU_URL = process.env.MODERN_EU_URL || 'https://dev-avatar.arena.im/automation2arena';
 const EU_BASE = EU_URL.substring(0, EU_URL.lastIndexOf('/'));
+const MODERN_EU_BASE = EU_BASE;
 
 class ProfileBuilderPage {
   constructor(page) {
@@ -46,6 +48,18 @@ class ProfileBuilderPage {
     await this._dismissPopper();
   }
 
+  async visitGeneralModern() {
+    await ensureModernAvatar(this.page);
+    await this._suppressAvatarHealthPopperBeforeNav();
+    await this.page.goto('/profile-builder');
+    await this.page.waitForLoadState('load');
+    await this.page
+      .getByText('Set the basic information of your profile')
+      .waitFor({ state: 'visible', timeout: 15000 });
+    await this.page.getByRole('button', { name: /^save$/i }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+    await this._dismissPopper();
+  }
+
   async visitHeadshot() {
     await ensurePrimaryAvatar(this.page);
     await this._suppressAvatarHealthPopperBeforeNav();
@@ -55,6 +69,18 @@ class ProfileBuilderPage {
       .getByText('Set your headshot')
       .waitFor({ state: 'visible', timeout: 15000 });
     // Wait for Add New button (rendered after data fetch) before checking for the popper
+    await this.page.getByRole('button', { name: /^add new$/i }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+    await this._dismissPopper();
+  }
+
+  async visitHeadshotModern() {
+    await ensureModernAvatar(this.page);
+    await this._suppressAvatarHealthPopperBeforeNav();
+    await this.page.goto('/profile-builder/headshot');
+    await this.page.waitForLoadState('load');
+    await this.page
+      .getByText('Set your headshot')
+      .waitFor({ state: 'visible', timeout: 15000 });
     await this.page.getByRole('button', { name: /^add new$/i }).waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
     await this._dismissPopper();
   }
@@ -299,6 +325,18 @@ class ProfileBuilderPage {
     ).toBeDisabled({ timeout: 15000 });
   }
 
+  async restoreOriginalProfileSettingsModern() {
+    if (!this._originalTitle && !this._originalSlug) return;
+    await this.visitGeneralModern();
+    if (this._originalTitle) await this.fillTitle(this._originalTitle);
+    if (this._originalHeadline !== null) await this.fillHeadline(this._originalHeadline);
+    if (this._originalSlug) await this.fillSlug(this._originalSlug);
+    await this.page.getByRole('button', { name: /^save$/i }).click();
+    await expect(
+      this.page.getByRole('button', { name: /^save$/i })
+    ).toBeDisabled({ timeout: 15000 });
+  }
+
   // ─── End-user reflection (PBG009) ────────────────────────────────────────────
 
   async euShouldShowUpdatedName(slug, title) {
@@ -328,6 +366,19 @@ class ProfileBuilderPage {
 
   async avatarWelcomeMessageShouldArriveInEu() {
     await this.page.getByRole('button', { name: /^text$/i }).click();
+    await this.page.waitForResponse(
+      (res) =>
+        (res.url().includes('send-message') || res.url().includes('/message')) &&
+        res.status() === 200,
+      { timeout: 30000 },
+    ).catch(() => null);
+    await expect(
+      this.page.locator('[class*="chat"], [role="log"]').first()
+    ).toBeVisible({ timeout: 10000 });
+  }
+
+  async avatarWelcomeMessageShouldArriveInEuModern() {
+    await this.page.getByRole('button', { name: /^(chat with avatar|chat)$/i }).click();
     await this.page.waitForResponse(
       (res) =>
         (res.url().includes('send-message') || res.url().includes('/message')) &&
@@ -446,6 +497,21 @@ class ProfileBuilderPage {
     await this.page.getByRole('button', { name: /^save$/i }).first().click();
     await responsePromise;
     // Wait for redirect (slug restore also redirects) then return to profile-builder
+    await this.page.waitForURL(/knowledge-base/i, { timeout: 20000 }).catch(() => {});
+    await this.page.waitForTimeout(1000);
+  }
+
+  async restoreSlugAfterReactiveTestModern(oldSlug) {
+    const target = oldSlug || this._reactiveTestOldSlug;
+    if (!target) return;
+    await this.visitGeneralModern();
+    await this.fillSlug(target);
+    const responsePromise = this.page.waitForResponse(
+      r => r.url().includes('/commerce-ai/') && r.request().method() !== 'GET' && r.status() === 200,
+      { timeout: 20000 },
+    ).catch(() => null);
+    await this.page.getByRole('button', { name: /^save$/i }).first().click();
+    await responsePromise;
     await this.page.waitForURL(/knowledge-base/i, { timeout: 20000 }).catch(() => {});
     await this.page.waitForTimeout(1000);
   }
@@ -693,6 +759,149 @@ class ProfileBuilderPage {
     await expect(
       this.page.getByText('Active')
     ).toBeVisible({ timeout: 10000 });
+  }
+
+  // ─── Headshot gallery — ensure & set active ───────────────────────────────────
+
+  async ensureImageHeadshotAvailable() {
+    // Image headshot cards contain img[alt]; the default 2-letter initials card does not.
+    const imageCards = this.page
+      .locator('[role="button"]')
+      .filter({ has: this.page.locator('img[alt]') });
+    if (await imageCards.count() > 0) return;
+    // No image headshot found — create one
+    await this.clickAddNew();
+    await this.selectStaticType();
+    await this.fillHeadshotName('E2E Test Headshot');
+    await this.uploadHeadshotImage();
+    await this.headshotCropDialogShouldAppear();
+    await this.saveHeadshotCrop();
+    await this.saveToGallery();
+    await this.headshotShouldAppearInGallery('E2E Test Headshot');
+  }
+
+  async setAvailableImageHeadshotAsActive() {
+    // Pick the first card that has an actual uploaded image
+    const firstImgCard = this.page
+      .locator('[role="button"]')
+      .filter({ has: this.page.locator('img[alt]') })
+      .first();
+    await firstImgCard.waitFor({ state: 'visible', timeout: 10000 });
+    const name = await firstImgCard.locator('img[alt]').first().getAttribute('alt');
+    await this._waitForCardReady(name);
+    await this._hoverCard(name);
+    // Set up response listener BEFORE clicking so a fast API response is never missed
+    const saveConfirmed = this.page.waitForResponse(
+      r => r.url().includes('/commerce-ai/') && r.request().method() !== 'GET' && r.status() === 200,
+      { timeout: 15000 }
+    ).catch(() => null);
+    await this.page.locator('button').filter({ hasText: /set as my profile/i }).click();
+    await saveConfirmed;
+    await expect(this.page.getByText('Active')).toBeVisible({ timeout: 10000 });
+  }
+
+  async _setDefaultCardActive() {
+    // Shared logic: hover the default 2-letter initials card and set it as active.
+    // Callers are responsible for navigating to the correct headshot tab first.
+    await this._dismissPopper();
+    const defaultCard = this.page
+      .locator('[role="button"]')
+      .filter({ hasNot: this.page.locator('img[alt]') })
+      .first();
+    await defaultCard.waitFor({ state: 'visible', timeout: 10000 });
+    // Hover the first inner div (same hover-slot as the <img> in named cards)
+    const contentArea = defaultCard.locator('div').first();
+    await contentArea.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
+    await this.page.mouse.move(0, 0);
+    await contentArea.hover();
+    const saveConfirmed = this.page.waitForResponse(
+      r => r.url().includes('/commerce-ai/') && r.request().method() !== 'GET' && r.status() === 200,
+      { timeout: 15000 }
+    ).catch(() => null);
+    await this.page.locator('button').filter({ hasText: /set as my profile/i }).click();
+    await saveConfirmed;
+  }
+
+  async setDefaultAvatarAsActive() {
+    // Navigate back to the Classic avatar headshot tab, then reset to default
+    await this.visitHeadshot();
+    await this._setDefaultCardActive();
+  }
+
+  async setDefaultModernAvatarAsActive() {
+    // Navigate back to the Modern avatar headshot tab, then reset to default
+    await this.visitHeadshotModern();
+    await this._setDefaultCardActive();
+  }
+
+  // ─── Headshot EU reflection ───────────────────────────────────────────────────
+
+  async headshotShouldBeVisibleInClassicEu() {
+    await this.page.goto(EU_URL, { timeout: 30000 });
+    await this.page.waitForLoadState('load');
+    // Classic EU: headshot in the rounded-full bg-slate-50 avatar container
+    const container = this.page
+      .locator('[class*="bg-slate-50"][class*="rounded-full"]')
+      .first();
+    await container.waitFor({ state: 'visible', timeout: 15000 });
+    const img = container.locator('img').first();
+    await expect(img).toBeVisible({ timeout: 10000 });
+    const src = await img.getAttribute('src');
+    expect(src).toBeTruthy();
+  }
+
+  async headshotImageShouldNotBeVisibleInClassicEu() {
+    await this.page.goto(EU_URL, { timeout: 30000 });
+    await this.page.waitForLoadState('load');
+    // Default 2-letter avatar renders as text — no <img> in the headshot container
+    const container = this.page
+      .locator('[class*="bg-slate-50"][class*="rounded-full"]')
+      .first();
+    await container.waitFor({ state: 'visible', timeout: 15000 });
+    await expect(container.locator('img')).toHaveCount(0, { timeout: 5000 });
+  }
+
+  async headshotShouldBeVisibleInModernEuChat() {
+    await this.page.goto(MODERN_EU_URL, { timeout: 30000 });
+    await this.page.waitForLoadState('load');
+    // Open the chat panel
+    await this.page.getByRole('button', { name: /^(chat with avatar|chat|text)$/i }).click();
+    // Headshot in the brand-gradient-bg container in the chat view
+    const container = this.page
+      .locator('[class*="brand-gradient-bg"]')
+      .first();
+    await container.waitFor({ state: 'visible', timeout: 15000 });
+    const img = container.locator('img').first();
+    await expect(img).toBeVisible({ timeout: 10000 });
+    const src = await img.getAttribute('src');
+    expect(src).toBeTruthy();
+  }
+
+  async headshotImageShouldNotBeVisibleInModernEuChat() {
+    await this.page.goto(MODERN_EU_URL, { timeout: 30000 });
+    await this.page.waitForLoadState('load');
+    await this.page.getByRole('button', { name: /^(chat with avatar|chat|text)$/i }).click();
+    const container = this.page
+      .locator('[class*="brand-gradient-bg"]')
+      .first();
+    await container.waitFor({ state: 'visible', timeout: 15000 });
+    await expect(container.locator('img')).toHaveCount(0, { timeout: 5000 });
+  }
+
+  async headshotShouldBeVisibleInModernEuVoiceCall() {
+    // Voice call is guaranteed enabled before this step is called (ensureVoiceCallEnabled).
+    await this.page.goto(MODERN_EU_URL, { timeout: 30000 });
+    await this.page.waitForLoadState('load');
+    await this.page.getByRole('button', { name: /^(start voice with avatar|voice|call)$/i }).click();
+    // Headshot in the rounded-full overflow-hidden backdrop-blur container in voice call
+    const container = this.page
+      .locator('[class*="overflow-hidden"][class*="rounded-full"][class*="backdrop-blur"]')
+      .first();
+    await container.waitFor({ state: 'visible', timeout: 15000 });
+    const img = container.locator('img').first();
+    await expect(img).toBeVisible({ timeout: 10000 });
+    const src = await img.getAttribute('src');
+    expect(src).toBeTruthy();
   }
 
   // ─── Headshot tab — card menu (Edit / Delete) ─────────────────────────────────
@@ -975,8 +1184,9 @@ class ProfileBuilderPage {
     const frame = this.page.frameLocator('iframe[title="Link in bio"]');
     await this._scrollPreviewToBottom();
 
-    // These elements carry the theme color as their background
-    const textBtn    = frame.getByRole('button', { name: 'Text' });
+    // These elements carry the theme color as their background.
+    // Classic preview shows "Text" button; Modern preview shows "Chat".
+    const textBtn    = frame.getByRole('button', { name: /^(text|chat)$/i }).first();
     const createLink = frame.getByRole('link', { name: 'Create myAvatar' });
     const emptyLink  = frame.getByRole('link').filter({ hasText: /^$/ }).first();
 
@@ -1089,6 +1299,17 @@ class ProfileBuilderPage {
 
   async visitSections() {
     await ensurePrimaryAvatar(this.page);
+    await this._suppressAvatarHealthPopperBeforeNav();
+    await this.page.goto('/sections');
+    await this.page.waitForLoadState('load');
+    await this.page
+      .getByRole('button', { name: /add section/i })
+      .waitFor({ state: 'visible', timeout: 30000 });
+    await this._dismissPopper();
+  }
+
+  async visitSectionsModern() {
+    await ensureModernAvatar(this.page);
     await this._suppressAvatarHealthPopperBeforeNav();
     await this.page.goto('/sections');
     await this.page.waitForLoadState('load');
@@ -2193,8 +2414,8 @@ class ProfileBuilderPage {
     if (layout) await pick(layout);
   }
 
-  async setURLMediaSectionStyle(sectionTitle, topStyle, display = null, layout = null) {
-    await this.visitSections();
+  async setURLMediaSectionStyle(sectionTitle, topStyle, display = null, layout = null, { modern = false } = {}) {
+    modern ? await this.visitSectionsModern() : await this.visitSections();
     const re = new RegExp(sectionTitle, 'i');
     const heading = this.page.getByRole('heading', { level: 3 }).filter({ hasText: re }).first();
     await expect(heading).toBeVisible({ timeout: 10000 });
@@ -2213,8 +2434,8 @@ class ProfileBuilderPage {
     await this.sectionShouldBeVisibleOnPage(sectionTitle);
   }
 
-  async createAndSaveURLMediaSectionWithLinks(title, urls, style = null) {
-    await this.visitSections();
+  async createAndSaveURLMediaSectionWithLinks(title, urls, style = null, { modern = false } = {}) {
+    modern ? await this.visitSectionsModern() : await this.visitSections();
     await this.clickAddSection();
     await this.selectURLMedia();
     await this.sectionEditorShouldBeVisible();
@@ -2230,8 +2451,8 @@ class ProfileBuilderPage {
     await this.sectionShouldBeVisibleOnPage(title);
   }
 
-  async createAndSaveURLMediaSection(title, url1, url2 = null, style = null) {
-    await this.visitSections();
+  async createAndSaveURLMediaSection(title, url1, url2 = null, style = null, { modern = false } = {}) {
+    modern ? await this.visitSectionsModern() : await this.visitSections();
     await this.clickAddSection();
     await this.selectURLMedia();
     await this.sectionEditorShouldBeVisible();
@@ -2248,7 +2469,7 @@ class ProfileBuilderPage {
     await this.sectionShouldBeVisibleOnPage(title);
   }
 
-  async createAndSaveDigitalProductSection(options) {
+  async createAndSaveDigitalProductSection(options, { modern = false } = {}) {
     const {
       title,
       price = '9.99',
@@ -2260,7 +2481,7 @@ class ProfileBuilderPage {
       useFileDelivery = false,
     } = options;
 
-    await this.visitSections();
+    modern ? await this.visitSectionsModern() : await this.visitSections();
     await this.clickAddSection();
     await this.selectDigitalProduct();
     await this.dpEditorShouldBeVisible();
