@@ -1,9 +1,12 @@
 const { expect } = require('@playwright/test');
 const path = require('path');
+const { ensurePrimaryAvatar, ensureModernAvatar } = require('../helpers/avatarHelper');
 
+const EU_URL        = process.env.EU_URL        || 'https://dev-avatar.arena.im/automation1arena';
 const MODERN_EU_URL = process.env.MODERN_EU_URL || 'https://dev-avatar.arena.im/automation2arena';
 
 const TEST_IMAGE_PATH = path.resolve(__dirname, '../fixtures/images/rodrigo rodrigues.jpg');
+const TEST_MODERN_IMAGE_PATH = path.resolve(__dirname, '../fixtures/images/Cristiano_Ronaldo.jpg');
 const TEST_PRODUCT_IMAGE_PATH = path.resolve(__dirname, '../fixtures/images/product.jpg');
 const TEST_AUDIO_PATH = path.resolve(__dirname, '../fixtures/audios/test-audio.mp3');
 
@@ -44,7 +47,7 @@ class VideoAIPage {
     if (await popper.isVisible({ timeout: 3000 }).catch(() => false)) {
       await this.page.keyboard.press('Escape');
       await popper.waitFor({ state: 'hidden', timeout: 5000 }).catch(async () => {
-        await this.page.locator('header').first().click({ force: true });
+        await this.page.locator('main').first().click({ force: true }).catch(() => {});
         await popper.waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
       });
     }
@@ -237,6 +240,13 @@ class VideoAIPage {
 
   async uploadAvatarImageAndSaveCrop() {
     await this.uploadAvatarImage();
+    await this.cropDialogShouldAppear();
+    await this.saveImageCrop();
+  }
+
+  async uploadAvatarImageModernAndSaveCrop() {
+    await this.page.locator('input[type="file"][accept*="image"]').first()
+      .setInputFiles(TEST_MODERN_IMAGE_PATH);
     await this.cropDialogShouldAppear();
     await this.saveImageCrop();
   }
@@ -654,10 +664,28 @@ class VideoAIPage {
     }
 
     const saveBtn = panel.locator('button').filter({ hasText: /^salvar$|^save$/i }).first();
-    if (await saveBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await saveBtn.click();
-    } else {
-      await panel.locator('button').first().click().catch(() => {});
+    if (!await saveBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      // No pre-existing voice — upload test audio to configure one
+      await this._panelGoToStateB();
+      const uploadCardBtn = panel.locator('button')
+        .filter({ hasText: /enviar gravação existente|upload.*recording|existing recording/i }).first();
+      if (await uploadCardBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        const fcPromise = this.page.waitForEvent('filechooser', { timeout: 10000 });
+        await uploadCardBtn.click();
+        const chooser = await fcPromise;
+        await chooser.setFiles(TEST_AUDIO_PATH);
+        await saveBtn.waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
+      }
+    }
+    // Click save up to twice: once to confirm the audio, once to close the panel
+    for (let i = 0; i < 2; i++) {
+      if (!await panel.isVisible({ timeout: 1000 }).catch(() => false)) break;
+      if (await saveBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await saveBtn.click();
+        await this.page.waitForTimeout(800);
+      } else {
+        break;
+      }
     }
     await panel.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
     await this.page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
@@ -765,7 +793,15 @@ class VideoAIPage {
   async waitForVideoToBeGenerated($test) {
     $test.setTimeout(840_000); // 14 min — only generation waits this long; element assertions stay at their own timeouts
 
-    await expect(this.page.locator('aside video[src]')).toBeVisible({ timeout: 720_000 });
+    // Race: video appears (success) vs server error heading appears (fail fast)
+    const generationError = this.page.locator('[role="complementary"]').getByRole('heading', {
+      name: /couldn't generate|não foi possível gerar/i,
+    });
+    await Promise.race([
+      this.page.locator('aside video[src]').waitFor({ state: 'visible', timeout: 720_000 }),
+      generationError.waitFor({ state: 'visible', timeout: 720_000 })
+        .then(() => { throw new Error('Server failed to generate the video — image processing rejected by backend'); }),
+    ]);
 
     const firstVideoBtn = this.page.getByRole('button', { name: /Select video|Selecionar vídeo/i }).first();
     if (await firstVideoBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
@@ -1022,7 +1058,11 @@ class VideoAIPage {
     expect(req, 'Expected a delete request to be fired after deletion confirmation').not.toBeNull();
   }
 
-  // ─── End-user page (VAI012) ───────────────────────────────────────────────────
+  // ─── End-user page Classic EU (VAI012) ───────────────────────────────────────
+
+  async navigateToEndUserPage() {
+    await this.page.goto(EU_URL, { waitUntil: 'load', timeout: 15000 });
+  }
 
   async clickAvatarProfileRing() {
     // Classic EU: profile image has a ring — click it to open the scene video modal.
@@ -1046,14 +1086,83 @@ class VideoAIPage {
     await this.page.goto('/video-ai');
     await this.page.waitForLoadState('networkidle').catch(() => {});
     await this._dismissQualityChecklist();
+    // Re-select the first video so the aside panel is restored after navigation
+    const firstVideoBtn = this.page.getByRole('button', { name: /Select video|Selecionar vídeo/i }).first();
+    if (await firstVideoBtn.isVisible({ timeout: 10000 }).catch(() => false)) {
+      await firstVideoBtn.click();
+      await this.page.locator('aside video').waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
+    }
   }
 
   async sceneVideoShouldNotOpenOnEU() {
+    // After removal, the EU may still show the ring due to propagation delay.
+    // Reload up to 3 times (5s apart) until the ring is gone, then assert no video.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const ringVisible = await this.page.locator(
+        'span[class*="items-center"][class*="justify-center"][class*="rounded-full"]'
+      ).first().isVisible({ timeout: 1000 }).catch(() => false);
+      if (!ringVisible) break;
+      await this.page.waitForTimeout(5000);
+      await this.page.reload({ waitUntil: 'load' });
+    }
     await expect(this.page.locator('video')).not.toBeVisible({ timeout: 5000 });
   }
 
   async navigateToModernEndUserPage() {
     await this.page.goto(MODERN_EU_URL, { waitUntil: 'load', timeout: 15000 });
+  }
+
+  async switchToPrimaryAvatarAndVisit() {
+    await ensurePrimaryAvatar(this.page);
+    await this.page.goto('/video-ai');
+    await this.page.waitForLoadState('networkidle').catch(() => {});
+    await this.page.locator('.animate-spin').first()
+      .waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {});
+    await this._dismissQualityChecklist();
+  }
+
+  async switchToModernAvatarAndVisit() {
+    await ensureModernAvatar(this.page);
+    await this.page.goto('/video-ai');
+    await this.page.waitForLoadState('networkidle').catch(() => {});
+    await this.page.locator('.animate-spin').first()
+      .waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {});
+    await this._dismissQualityChecklist();
+  }
+
+  // ─── End-user page Modern EU (VAI013) ────────────────────────────────────────
+
+  async heroVideoShouldBeVisible() {
+    // Reload up to 4 times (8s apart) until the hero video or play button appears.
+    // Modern EU may take up to ~40s to reflect a newly published video.
+    let found = false;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await this.page.reload({ waitUntil: 'load' });
+      found = await this.page.locator('video').isVisible({ timeout: 5000 }).catch(() => false);
+      if (!found) {
+        found = await this.page.getByRole('button', { name: /play video/i })
+          .first().isVisible({ timeout: 3000 }).catch(() => false);
+      }
+      if (found) break;
+      await this.page.waitForTimeout(8000);
+    }
+    await expect(
+      this.page.locator('video').or(this.page.getByRole('button', { name: /play video/i }).first())
+    ).toBeVisible({ timeout: 5000 });
+  }
+
+  async defaultAvatarImageShouldBeVisible() {
+    let found = false;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await this.page.reload({ waitUntil: 'load' });
+      found = await this.page.locator('img[src*="skip-avatar"]')
+        .isVisible({ timeout: 5000 }).catch(() => false);
+      if (found) break;
+      if (attempt < 3) await this.page.waitForTimeout(8000);
+    }
+    await expect(
+      this.page.locator('img[src*="skip-avatar"]')
+    ).toBeVisible({ timeout: 5000 });
   }
 
   // ─── Post-test cleanup ────────────────────────────────────────────────────────

@@ -3,14 +3,22 @@ const { test } = require('../fixtures');
 
 const { Given, When, Then } = createBdd(test);
 
-// ─── Background (shared with CAT07) ───────────────────────────────────────────
+// ─── Background ───────────────────────────────────────────────────────────────
 
 Given('I am on the end user page', async ({ endUserPage }) => {
   await endUserPage.visit();
 });
 
+Given('I am on the modern end user page', async ({ endUserModernPage }) => {
+  await endUserModernPage.visit();
+});
+
 When('I reload the end user page', async ({ endUserPage }) => {
   await endUserPage.visit();
+});
+
+When('I reload the modern end user page', async ({ endUserModernPage }) => {
+  await endUserModernPage.visit();
 });
 
 // ─── Entry points ─────────────────────────────────────────────────────────────
@@ -128,4 +136,86 @@ When('I log in with X in the end user', async ({ endUserPage }) => {
 
 When('I log in with Facebook in the end user', async ({ endUserPage }) => {
   await endUserPage.loginWithFacebook();
+});
+
+// ─── User Profile Management ──────────────────────────────────────────────────
+
+When('I sign in to the end user as {string} with password {string}', async ({ endUserPage }, email, password) => {
+  await endUserPage.loginWithCredentials(email, password);
+});
+
+When('I open the profile menu', async ({ endUserPage }) => {
+  await endUserPage.openProfileMenu();
+});
+
+When('I click My Profile', async ({ endUserPage }) => {
+  await endUserPage.clickMyProfile();
+});
+
+When('I click View Profile', async ({ endUserPage }) => {
+  await endUserPage.clickViewProfile();
+});
+
+When('I click Edit Profile', async ({ endUserPage }) => {
+  await endUserPage.clickEditProfileButton();
+});
+
+When('I select the {string} tab', async ({ endUserPage }, tabName) => {
+  await endUserPage.selectProfileTab(tabName);
+});
+
+When('I update the display name to {string}', async ({ endUserPage }, name) => {
+  await endUserPage.updateDisplayName(name);
+});
+
+When('I update the bio to {string}', async ({ endUserPage }, text) => {
+  await endUserPage.updateBio(text);
+});
+
+When('I fill the bio with {int} characters', async ({ endUserPage }, count) => {
+  await endUserPage.fillBioWithNCharacters(count);
+});
+
+When('I save the profile', async ({ endUserPage }) => {
+  await endUserPage.saveProfile();
+});
+
+When('I click the Share Profile button', async ({ endUserPage }) => {
+  await endUserPage.clickShareProfileButton();
+});
+
+When('I click Change Password', async ({ endUserPage }) => {
+  await endUserPage.clickChangePassword();
+});
+
+When('I click Log Out from the profile menu', async ({ endUserPage }) => {
+  await endUserPage.clickLogOutFromMenu();
+});
+
+Then('the display name {string} should appear in the profile', async ({ endUserPage }, name) => {
+  await endUserPage.profileDisplayNameShouldBe(name);
+});
+
+Then('the bio value should not exceed {int} characters', async ({ endUserPage }, maxLength) => {
+  await endUserPage.bioValueShouldNotExceed(maxLength);
+});
+
+Then('a copied notification should appear', async ({ endUserPage }) => {
+  await endUserPage.copiedNotificationShouldBeVisible();
+});
+
+Then('the Create AI Avatar link should have the correct UTM parameters', async ({ endUserPage }) => {
+  await endUserPage.createAvatarLinkShouldHaveCorrectUTMParams();
+});
+
+Then('the Change Password option should be visible', async ({ endUserPage }) => {
+  await endUserPage.changePasswordOptionShouldBeVisible();
+});
+
+Then('the change password form should appear', async ({ endUserPage }) => {
+  await endUserPage.changePasswordFormShouldBeVisible();
+});
+
+Then('I should be logged out of the end user', async ({ endUserPage }) => {
+  await endUserPage.shouldBeLoggedOut();
 });

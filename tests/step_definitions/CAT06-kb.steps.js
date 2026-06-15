@@ -1,6 +1,7 @@
 const { createBdd } = require('playwright-bdd');
 const { test } = require('../fixtures');
 const { KnowledgeBasePage } = require('../../support/Pages/KnowledgeBasePage');
+const { ensureModernAvatar, ensurePrimaryAvatar } = require('../../support/helpers/avatarHelper');
 
 const { Given, When, Then, After } = createBdd(test);
 
@@ -431,7 +432,73 @@ Then('the Voice Calls node should be visible in the knowledge base', async ({ kb
   await kbPage.voiceCallsNodeShouldBeVisible();
 });
 
-// ─── KB026: Canvas controls ───────────────────────────────────────────────────
+// ─── KB023–KB024: Voice Call EU visibility ───────────────────────────────────
+
+Given('the voice call skill is enabled', async ({ kbPage }) => {
+  await kbPage.ensureVoiceCallEnabled();
+});
+
+Given('the voice call skill is enabled for the modern avatar', async ({ kbPage }) => {
+  await ensureModernAvatar(kbPage.page);
+  // Don't call kbPage.visit() — it always calls ensurePrimaryAvatar() internally.
+  // Navigate directly to KB while keeping the modern avatar context.
+  await kbPage.page.goto('/knowledge-base');
+  await kbPage.page.waitForLoadState('load');
+  // Wait for the React Flow canvas to stabilize before opening the skills popover.
+  await kbPage.page.locator('.react-flow__node').first()
+    .waitFor({ state: 'visible', timeout: 30000 });
+  await kbPage.page.waitForTimeout(2000);
+  // Explicitly dismiss Avatar Quality panel before operating — it may have appeared during page load.
+  await kbPage._dismissOverlays();
+  await kbPage.ensureVoiceCallEnabled();
+});
+
+When('I disable the voice call skill', async ({ kbPage }) => {
+  await kbPage.disableVoiceCallSkill();
+});
+
+When('I enable the voice call toggle', async ({ kbPage }) => {
+  await kbPage.enableVoiceCallToggle();
+});
+
+When('I visit the classic end-user page', async ({ endUserPage }) => {
+  await endUserPage.visit();
+});
+
+When('I visit the modern end-user page', async ({ endUserModernPage }) => {
+  await endUserModernPage.visit();
+});
+
+When('I navigate back to the knowledge base', async ({ kbPage }) => {
+  await kbPage.visit();
+});
+
+When('I navigate back to the modern avatar knowledge base', async ({ kbPage }) => {
+  await ensureModernAvatar(kbPage.page);
+  await kbPage.page.goto('/knowledge-base');
+  await kbPage.page.waitForLoadState('load');
+  await kbPage.page.locator('.react-flow__node').first()
+    .waitFor({ state: 'visible', timeout: 30000 });
+  await kbPage.page.waitForTimeout(2000);
+});
+
+Then('the voice call button should not be visible on the EU home page', async ({ endUserPage }) => {
+  await endUserPage.voiceCallButtonOnHomeShouldNotBeVisible();
+});
+
+Then('the voice call icon should not be visible inside the chat', async ({ endUserPage }) => {
+  await endUserPage.voiceCallIconInChatShouldNotBeVisible();
+});
+
+Then('the voice call button should be visible on the EU home page', async ({ endUserPage }) => {
+  await endUserPage.voiceCallButtonOnHomeShouldBeVisible();
+});
+
+Then('the voice call icon should be visible inside the chat', async ({ endUserPage }) => {
+  await endUserPage.voiceCallIconInChatShouldBeVisible();
+});
+
+// ─── KB024: Canvas controls ───────────────────────────────────────────────────
 
 Then('the Select mode should be active', async ({ kbPage }) => {
   await kbPage.selectModeShouldBeActive();
@@ -506,6 +573,31 @@ Given('I start with a clean knowledge base canvas', async ({ kbPage }) => {
 // by KB006 are reused by KB007–KB016 (ensureSocialIntegrationsLoaded / ensureOtherIntegrationsLoaded
 // already skip creation when integrations exist, saving ~10 min per scenario).
 // @kb-clean-start scenarios handle their own pre-test cleanup via the Given step above.
+After(
+  { tags: '@kb-voice-teardown' },
+  async ({ kbPage }) => {
+    await kbPage.ensureVoiceCallEnabled();
+  }
+);
+
+// Restore voice call for automation2arena and switch back to the primary avatar.
+After(
+  { tags: '@kb-voice-modern-teardown' },
+  async ({ kbPage }) => {
+    await ensureModernAvatar(kbPage.page);
+    // Navigate directly — kbPage.visit() would switch back to primary avatar first.
+    await kbPage.page.goto('/knowledge-base');
+    await kbPage.page.waitForLoadState('load');
+    // Mirror the Given step setup: wait for canvas then dismiss any overlay before restoring.
+    await kbPage.page.locator('.react-flow__node').first()
+      .waitFor({ state: 'visible', timeout: 30000 });
+    await kbPage.page.waitForTimeout(2000);
+    await kbPage._dismissOverlays();
+    await kbPage.ensureVoiceCallEnabled();
+    await ensurePrimaryAvatar(kbPage.page);
+  }
+);
+
 After(
   { tags: '@kb-delete or @kb-validation' },
   async ({ page }) => {

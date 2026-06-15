@@ -1,5 +1,5 @@
 const { expect } = require('@playwright/test');
-const { ensurePrimaryAvatar } = require('../helpers/avatarHelper');
+const { ensurePrimaryAvatar, ensureModernAvatar } = require('../helpers/avatarHelper');
 
 class AudiencePage {
   constructor(page) {
@@ -21,6 +21,13 @@ class AudiencePage {
       }
     );
 
+    await this._dismissOverlays();
+  }
+
+  async visitModern() {
+    await ensureModernAvatar(this.page);
+    await this.page.goto('/audience');
+    await this.page.waitForLoadState('load');
     await this._dismissOverlays();
   }
 

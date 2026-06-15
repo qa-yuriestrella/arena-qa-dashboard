@@ -29,8 +29,6 @@ Feature: CAT13 - Profile Builder – Social Links Tab
     Then the "X" icon in the preview should link to the correct domain
 
   # ─── URL normalisation ────────────────────────────────────────────────────────
-  # When only a username/handle is entered (no https://), the system expands it
-  # to the full URL on save.
 
   @pbs-normalise
   Scenario Outline: PBS005 - Entering a handle for <network> normalises to the full URL after saving

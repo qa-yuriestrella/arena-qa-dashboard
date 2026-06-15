@@ -1,4 +1,4 @@
-@video-ai
+﻿@video-ai
 Feature: CAT10 - Video AI Studio
 
   Background:
@@ -201,8 +201,9 @@ Feature: CAT10 - Video AI Studio
 
 
   @vai-profile
-  Scenario: VAI012 - A generated video can be added and removed from the user profile
-    Given a completed video exists in the account
+  Scenario: VAI012 - A generated video can be added and removed from the user profile (Classic)
+    Given I am using the Classic avatar
+    And a completed video exists in the account
     And the video is not added to the profile
     When I add the video to my profile
     Then the remove from profile button should be visible
@@ -218,8 +219,32 @@ Feature: CAT10 - Video AI Studio
     Then the scene video should not open on the end user page
 
 
+  @vai-profile-modern @fixme
+  Scenario: VAI013 - A generated video can be added and removed from the user profile (Modern)
+    Given I am using the Modern avatar
+    When I select the "Falar para a câmera" video type
+    And I upload the Modern avatar image and save the crop
+    And I use the avatar voice
+    And I fill the script field with a description
+    And I click generate
+    Then a generation request should be fired
+    When I wait for the video to be generated
+    Then the video player should be visible
+    And the video is not added to the profile
+    When I add the video to my profile
+    Then the remove from profile button should be visible
+    And the publish request should be fired
+    When I navigate to the Modern end user page
+    Then the hero video should be visible
+    When I navigate back to the dashboard
+    And I remove the video from my profile
+    Then the add to profile button should be visible
+    When I navigate to the Modern end user page
+    Then the default avatar image should be visible in the hero
+
+
   @vai-regenerate
-  Scenario: VAI013 - A completed video can be regenerated
+  Scenario: VAI014 - A completed video can be regenerated
     Given a completed video exists in the account
     When I click regenerate
     Then a regenerate request should be fired
@@ -227,7 +252,7 @@ Feature: CAT10 - Video AI Studio
 
 
   @vai-delete
-  Scenario: VAI014 - Deleting a scene calls the delete API and removes the video player
+  Scenario: VAI015 - Deleting a scene calls the delete API and removes the video player
     Given a completed video exists in the account
     When I open the more options menu
     And I click delete scene

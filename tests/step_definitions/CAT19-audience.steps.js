@@ -7,6 +7,10 @@ Given('I am on the Audience page', async ({ audiencePage }) => {
   await audiencePage.visit();
 });
 
+Given('I am on the modern avatar audience page', async ({ audiencePage }) => {
+  await audiencePage.visitModern();
+});
+
 // ─── UI ────────────────────────────────────────────────────────────────────────
 
 Then('the audience page title should be visible', async ({ audiencePage }) => {

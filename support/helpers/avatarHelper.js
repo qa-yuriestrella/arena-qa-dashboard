@@ -27,16 +27,35 @@ async function _ensureAvatar(page, targetSlug) {
     await page.waitForLoadState('load');
 
     // If redirected to the "Lock in your Identity" handle-setup onboarding page,
-    // click "Back" to navigate away and retry.
+    // try to exit it before using the avatar switcher.
     const isOnboarding = await page.locator('h1, h2').filter({ hasText: /Lock in your Identity/i })
       .isVisible({ timeout: 3000 }).catch(() => false);
     if (isOnboarding) {
+      const urlBefore = page.url();
       const backBtn = page.getByRole('button', { name: 'Back' });
       if (await backBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
         await backBtn.click();
-        await page.waitForLoadState('load');
-        await page.waitForTimeout(2000);
+        await page.waitForLoadState('load').catch(() => {});
+      } else {
+        // Some versions only show "Lock It In". Click it and wait for URL change.
+        const lockBtn = page.getByRole('button', { name: 'Lock It In' });
+        if (await lockBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+          await lockBtn.click();
+          // Give the server up to 6s to navigate away; if URL doesn't change the
+          // claim probably failed silently (handle already owned by this account).
+          await page.waitForURL(url => url !== urlBefore, { timeout: 6000 }).catch(() => {});
+        }
       }
+      // If still on the identity page (URL unchanged or heading still visible),
+      // force-navigate to a page that bypasses the redirect.
+      const stillOnboarding = await page.locator('h1, h2')
+        .filter({ hasText: /Lock in your Identity/i })
+        .isVisible({ timeout: 2000 }).catch(() => false);
+      if (stillOnboarding) {
+        await page.goto('/avatar-management');
+        await page.waitForLoadState('load').catch(() => {});
+      }
+      await page.waitForTimeout(1500);
       continue; // retry the loop
     }
 
@@ -89,7 +108,9 @@ async function _ensureAvatar(page, targetSlug) {
     const targetBtn = dialog.getByRole('button').filter({ hasText: targetSlug });
     if (await targetBtn.count() > 0) {
       await targetBtn.first().click();
-      await page.waitForLoadState('networkidle', { timeout: 15000 });
+      // Wait for dialog to close, then domcontentloaded — networkidle hangs on SPA persistent connections.
+      await dialog.waitFor({ state: 'hidden', timeout: 10000 }).catch(() => {});
+      await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
       // Dismiss the Avatar Health popper that can appear after a switch
       const popper = page.locator('[data-radix-popper-content-wrapper]');
       if (await popper.isVisible({ timeout: 3000 }).catch(() => false)) {

@@ -20,8 +20,6 @@ Feature: CAT12 - Profile Builder – Headshot Tab
     Then the animated image form should be visible
 
   # ─── Full static headshot creation ───────────────────────────────────────────
-  # PBH004 creates "E2E Test Headshot" which PBH005, PBH006 and PBH007 depend on.
-  # Run these scenarios in order (1 worker, sequential execution).
 
   @pbh-crud
   Scenario: PBH004 - Creating a static headshot shows it in the gallery
@@ -57,6 +55,27 @@ Feature: CAT12 - Profile Builder – Headshot Tab
     Then the Set as my profile button should be visible
     When I click Set as my profile
     Then the active headshot badge should be visible
+
+  # ─── End User headshot reflection ────────────────────────────────────────────
+
+  @pbh-eu-headshot
+  Scenario: PBH009 - Active headshot is reflected and cleared on the Classic EU page
+    Given an image headshot is available in the gallery
+    When I set the available image headshot as active
+    Then the active headshot should be visible in the Classic EU
+    When I set the default avatar as active
+    Then the headshot image should not be visible in the Classic EU
+
+  @pbh-eu-headshot-modern
+  Scenario: PBH009M - Active headshot is reflected and cleared on the Modern EU page
+    Given I am on the Modern Profile Builder Headshot tab
+    And an image headshot is available in the gallery
+    When I set the available image headshot as active
+    And voice call is enabled for the Modern avatar
+    Then the active headshot should be visible in the Modern EU chat
+    And the active headshot should be visible in the Modern EU voice call
+    When I set the default Modern avatar as active
+    Then the headshot image should not be visible in the Modern EU chat
 
   # ─── Edit ─────────────────────────────────────────────────────────────────────
 

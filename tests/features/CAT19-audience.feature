@@ -72,3 +72,15 @@ Feature: CAT19 - Audience
   Scenario: AUD008 - A newly signed-up end-user appears in the Audience list
     Given the audience API is mocked to return a newly signed-up user
     Then the signed-up user should be listed in the audience table
+
+  # ─── Modern EU ────────────────────────────────────────────────────────────────
+
+  Rule: Modern EU
+
+    Background:
+      Given I am on the modern avatar audience page
+
+    @aud-mock @aud-modern-mock
+    Scenario: AUD008M - A newly signed-up Modern EU user appears in the Audience list
+      Given the audience API is mocked to return a newly signed-up user
+      Then the signed-up user should be listed in the audience table

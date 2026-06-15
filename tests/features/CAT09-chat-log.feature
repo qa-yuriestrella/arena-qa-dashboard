@@ -92,3 +92,47 @@ Feature: CAT09 - Chat Log
     Given I note the current conversation count
     When I open the end user chat without sending a message
     Then the welcome-only session should not have user messages within 30 seconds
+
+  # ─── Integration: Modern End User → chat log ──────────────────────────────────
+
+  Rule: Modern EU
+
+    Background:
+      Given I am on the modern avatar chat log page
+      And the modern avatar chat log has at least one conversation
+
+    @cl-integration @cl-modern-integration
+    Scenario: CL007M - A message sent from the Modern end user as an anonymous user appears in the chat log
+      Given I note the current modern avatar conversation count
+      When I send a message from the modern end user page
+      Then a new conversation should appear in the modern avatar chat log
+      And the sent message should be visible in the modern conversation detail
+
+    @cl-integration @cl-modern-integration
+    Scenario: CL008M - A multi-turn dialogue from the Modern end user appears with correct content in the chat log
+      Given I note the current modern avatar conversation count
+      When I conduct a dialogue from the modern end user page
+      Then a new conversation should appear in the modern avatar chat log
+      And the dialogue messages should appear in the modern avatar chat log
+
+    @cl-integration @cl-modern-integration
+    Scenario: CL009M - A message sent by a logged-in Modern EU user shows their display name in the chat log
+      Given I note the current modern avatar conversation count
+      When I send a message from the modern end user page as a logged-in user
+      Then a new conversation should appear in the modern avatar chat log
+      And the logged-in user's name should be visible in the modern conversation
+
+    @cl-integration @cl-modern-integration
+    Scenario: CL010M - An anonymous Modern EU user who signs up after messaging has their name updated in the chat log
+      Given I note the current modern avatar conversation count
+      When I send a message as anonymous from the modern end user page
+      Then a new conversation should appear in the modern avatar chat log
+      And the first conversation should show as "Anonymous"
+      When I sign up and send a follow-up message from the modern end user page
+      Then the signed-up user's name should be visible in the modern conversation
+
+    @cl-integration @cl-modern-integration
+    Scenario: CL011M - Opening the Modern EU chat without sending a message does not create a chat log entry
+      Given I note the current modern avatar conversation count
+      When I open the modern end user chat without sending a message
+      Then the welcome-only session should not have user messages within 30 seconds

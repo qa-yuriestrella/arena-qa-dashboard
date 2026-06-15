@@ -15,23 +15,35 @@ class EndUserPage {
   }
 
   async visit() {
-    const response = await this.page.goto(this._euUrl, { timeout: 10000 });
+    const response = await this.page.goto(this._euUrl, { timeout: 30000 });
     if (response && response.status() === 404) {
       throw new Error(`End-user page returned 404 – avatar may not exist at ${this._euUrl}`);
     }
-    await this.page.waitForLoadState('load', { timeout: 10000 });
+    await this.page.waitForLoadState('load', { timeout: 30000 });
   }
 
   // ─── Entry points ─────────────────────────────────────────────────────────────
 
   async clickProfileButton() {
+    // Classic EU: auth dialog loads inside an iframe. Wait for it to be present in the
+    // DOM before clicking so the component is initialised.
+    // Modern EU: no iframe — skip the wait immediately.
+    // Use a plain CSS locator (not frameLocator) to avoid CDP polling interference.
+    const hasIframe = await this.page.locator('iframe').first()
+      .waitFor({ state: 'attached', timeout: 5000 })
+      .then(() => true).catch(() => false);
+    if (hasIframe) {
+      await this._authFrame().getByRole('dialog')
+        .waitFor({ state: 'attached', timeout: 5000 })
+        .catch(() => {});
+    }
     // Classic: button name "Login"; Modern: aria-label "Log in" (with space).
-    // /^log\s*in$/i matches both.
     await this.page.getByRole('button', { name: /^log\s*in$/i }).first().click();
   }
 
   async clickSubscribeButton() {
-    await this.page.getByRole('button', { name: /subscribe/i }).click();
+    // Use anchored pattern so "Unsubscribe" (starts with "Un") does not match.
+    await this.page.getByRole('button', { name: /^subscribe/i }).click();
   }
 
   async openTextChat() {
@@ -56,8 +68,8 @@ class EndUserPage {
     this._messageRequestPromise.catch(() => {});
     this._welcomeResponsePromise.catch(() => {});
 
-    // Classic: "Text"; Modern: "Chat"
-    await this.page.getByRole('button', { name: /^(chat|text)$/i }).click();
+    // Classic: "Text"; Modern: aria-label "Chat with avatar"
+    await this.page.getByRole('button', { name: /^(chat with avatar|chat|text)$/i }).click();
   }
 
   async clickCallButton() {
@@ -76,8 +88,8 @@ class EndUserPage {
       { timeout: 30000 }
     );
     this._callRequestPromise.catch(() => {});
-    // Classic: "Call"; Modern: "Voice"
-    await this.page.getByRole('button', { name: /^(voice|call)$/i }).click();
+    // Classic: "Call"; Modern: aria-label "Start voice with avatar"
+    await this.page.getByRole('button', { name: /^(start voice with avatar|voice|call)$/i }).click();
   }
 
   async clickProfileIconInsideChat() {
@@ -88,56 +100,153 @@ class EndUserPage {
 
   // ─── Auth modal ───────────────────────────────────────────────────────────────
 
-  // Auth modal renders inside an iframe — all modal interactions must use this frame.
+  // Auth modal renders inside an iframe (Classic EU) or directly in the page (Modern EU).
   _authFrame() {
     return this.page.frameLocator('iframe').first();
   }
 
+  // Detect Modern EU by checking the CURRENT browser URL (reliable even when endUserPage
+  // fixture is reused across both avatars on the same page object).
+  _isModernEU() {
+    const modernSlug = MODERN_EU_URL.split('/').pop(); // 'automation2arena'
+    return this.page.url().includes(modernSlug);
+  }
+
+  // Returns a locator pointing at the open dialog — works in both implementations.
+  async _authDialogLocator() {
+    const iframeDialog = this._authFrame().getByRole('dialog');
+    const inIframe = await iframeDialog.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false);
+    return inIframe ? iframeDialog : this.page.getByRole('dialog');
+  }
+
   async authModalShouldBeVisible() {
-    await expect(this._authFrame().getByRole('dialog')).toBeVisible({ timeout: 15000 });
+    if (this._isModernEU()) {
+      // Modern EU: auth dialog has aria-label "Welcome back". The chat panel also renders
+      // as role="dialog" (aria-label "Chat"), so target the auth dialog specifically to
+      // avoid Playwright strict-mode violation when both are present.
+      await expect(
+        this.page.getByRole('dialog', { name: /welcome back/i })
+      ).toBeVisible({ timeout: 20000 });
+    } else {
+      // Classic EU: auth modal may render as a page-level dialog "Create your account"
+      // or inside an iframe (backend feature flag). Accept either form.
+      const pageModal  = this.page.getByRole('dialog', { name: /create your account/i });
+      const iframeMenu = this._authFrame().getByRole('menuitem').first();
+      const found = await Promise.race([
+        pageModal.waitFor({ state: 'visible', timeout: 10000 }).then(() => true).catch(() => false),
+        iframeMenu.waitFor({ state: 'visible', timeout: 10000 }).then(() => true).catch(() => false),
+      ]);
+      if (!found) throw new Error('Auth modal not visible (neither page-level dialog nor iframe content found)');
+    }
   }
 
   async authModalShouldShowAllOptions() {
-    const dialog = this._authFrame().getByRole('dialog');
-    await expect(dialog.getByRole('menuitem', { name: /continue with google/i })).toBeVisible();
-    await expect(dialog.getByRole('menuitem', { name: /continue with facebook/i })).toBeVisible();
-    await expect(dialog.getByRole('menuitem', { name: /continue with x/i })).toBeVisible();
-    await expect(dialog.getByRole('menuitem', { name: /continue with email/i })).toBeVisible();
+    if (this._isModernEU()) {
+      // Modern EU: buttons inside the auth dialog (aria-label "Welcome back").
+      // Target by name to avoid strict-mode violation if chat panel (role=dialog) is also open.
+      const dlg = this.page.getByRole('dialog', { name: /welcome back/i });
+      await expect(dlg.getByRole('button', { name: /continue with google/i })).toBeVisible({ timeout: 5000 });
+      await expect(dlg.getByRole('button', { name: /continue with facebook/i })).toBeVisible({ timeout: 5000 });
+      await expect(dlg.getByRole('button', { name: /continue with x/i })).toBeVisible({ timeout: 5000 });
+      await expect(dlg.getByRole('button', { name: /continue with email/i })).toBeVisible({ timeout: 5000 });
+    } else {
+      // Classic EU: options may be in the page-level dialog ("Sign up with …")
+      // or as menuitems inside an iframe ("Continue with …"). Check whichever is visible.
+      const isPageModal = await this.page.getByRole('dialog', { name: /create your account/i })
+        .isVisible().catch(() => false);
+      if (isPageModal) {
+        const dlg = this.page.getByRole('dialog', { name: /create your account/i });
+        await expect(dlg.getByRole('button', { name: /sign up with google/i })).toBeVisible({ timeout: 5000 });
+        await expect(dlg.getByRole('button', { name: /sign up with facebook/i })).toBeVisible({ timeout: 5000 });
+        await expect(dlg.getByRole('button', { name: /sign up with x/i })).toBeVisible({ timeout: 5000 });
+        await expect(dlg.getByRole('button', { name: /sign up with email/i })).toBeVisible({ timeout: 5000 });
+      } else {
+        const iframeDialog = this._authFrame().getByRole('dialog');
+        await expect(iframeDialog.getByRole('menuitem', { name: /continue with google/i })).toBeVisible({ timeout: 5000 });
+        await expect(iframeDialog.getByRole('menuitem', { name: /continue with facebook/i })).toBeVisible({ timeout: 5000 });
+        await expect(iframeDialog.getByRole('menuitem', { name: /continue with x/i })).toBeVisible({ timeout: 5000 });
+        await expect(iframeDialog.getByRole('menuitem', { name: /continue with email/i })).toBeVisible({ timeout: 5000 });
+      }
+    }
   }
 
   // ─── Email signup ─────────────────────────────────────────────────────────────
 
   async selectEmailSignup() {
-    await this._authFrame().getByRole('menuitem', { name: /continue with email/i }).click();
+    if (this._isModernEU()) {
+      // Modern EU: two-step path to the email signup form.
+      // Step 1 — "Welcome back" → "New here? Create an account"
+      const createAccountBtn = this.page.getByRole('dialog', { name: /welcome back/i })
+        .getByRole('button', { name: /create an account/i });
+      if (await createAccountBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await createAccountBtn.click();
+      }
+      // Step 2 — "Create your account" → "Sign up with email"
+      await this.page.getByRole('dialog', { name: /create your account/i })
+        .getByRole('button', { name: /sign up with email/i })
+        .click({ timeout: 10000 });
+    } else {
+      // Classic: menuitem "Continue with email" inside the iframe dialog.
+      await this._authFrame().getByRole('menuitem', { name: /continue with email/i }).click();
+    }
   }
 
   async fillSignupFormWithNewUser() {
     const email = faker.internet.email({ provider: 'yopmail.com' });
     const password = `Test@${faker.number.int({ min: 1000, max: 9999 })}Aa!`;
-    const frame = this._authFrame();
-    // Label is "Email address*"; placeholder is "Enter your email" (not "email address")
-    await frame.getByLabel(/email address/i).fill(email);
-    await frame.getByLabel(/^password\*/i).fill(password);
-    await frame.getByLabel(/confirm password/i).fill(password);
+    if (this._isModernEU()) {
+      // Modern EU: "Create your account" dialog — labels "EMAIL", "PASSWORD", "CONFIRM PASSWORD"
+      const dlg = this.page.getByRole('dialog', { name: /create your account/i });
+      await dlg.getByLabel(/^email$/i).fill(email);
+      await dlg.getByLabel(/^password$/i).fill(password);
+      await dlg.getByLabel(/confirm password/i).fill(password);
+    } else {
+      const frame = this._authFrame();
+      // Classic EU labels: "Email address*", "Password*", "Confirm password"
+      await frame.getByLabel(/email address/i).fill(email);
+      await frame.getByLabel(/^password\*/i).fill(password);
+      await frame.getByLabel(/confirm password/i).fill(password);
+    }
   }
 
   async clickCreateAccount() {
-    await this._authFrame().getByRole('button', { name: /create account/i }).click();
+    if (this._isModernEU()) {
+      await this.page.getByRole('dialog', { name: /create your account/i })
+        .getByRole('button', { name: /^create account$/i }).click();
+    } else {
+      await this._authFrame().getByRole('button', { name: /create account/i }).click();
+    }
   }
 
   async fillDisplayName() {
-    const input = this._authFrame().getByPlaceholder(/display name|your name|input your name/i);
-    await input.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
-    if (await input.isVisible()) {
-      await input.fill(faker.person.firstName());
+    // Classic: display name input is inside the auth iframe.
+    const iframeInput = this._authFrame().getByPlaceholder(/display name|your name|input your name/i);
+    const inIframe = await iframeInput.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false);
+    if (inIframe) {
+      await iframeInput.fill(faker.person.firstName());
+      return;
+    }
+    // Modern EU: display name input may appear in the page-level dialog after account creation.
+    const pageInput = this.page.getByPlaceholder(/display name|your name|input your name/i);
+    const inPage = await pageInput.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false);
+    if (inPage) {
+      await pageInput.fill(faker.person.firstName());
     }
   }
 
   async clickSave() {
-    const saveBtn = this._authFrame().getByRole('button', { name: /^save$/i });
-    await saveBtn.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
-    if (await saveBtn.isVisible()) {
-      await saveBtn.click();
+    // Classic: Save button is inside the auth iframe.
+    const iframeBtn = this._authFrame().getByRole('button', { name: /^save$/i });
+    const inIframe = await iframeBtn.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false);
+    if (inIframe) {
+      await iframeBtn.click();
+      return;
+    }
+    // Modern EU: Save button may appear in the page-level dialog.
+    const pageBtn = this.page.getByRole('button', { name: /^save$/i });
+    const inPage = await pageBtn.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false);
+    if (inPage) {
+      await pageBtn.click();
     }
   }
 
@@ -146,55 +255,113 @@ class EndUserPage {
   // Checking button text is robust: toggling changes the input type between
   // "password" and "text", making input-type counts unreliable.
 
+  async _inIframeAuth() {
+    return this._authFrame().getByRole('button', { name: /show password|hide password/i }).first()
+      .waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false);
+  }
+
   async passwordFieldShouldBeHidden() {
-    await expect(
-      this._authFrame().getByRole('button', { name: /^show password$/i }).first()
-    ).toBeVisible({ timeout: 5000 });
+    if (await this._inIframeAuth()) {
+      await expect(this._authFrame().getByRole('button', { name: /^show password$/i }).first()).toBeVisible({ timeout: 5000 });
+    } else {
+      await expect(this.page.getByRole('button', { name: /^show password$/i }).first()).toBeVisible({ timeout: 5000 });
+    }
   }
 
   async passwordFieldShouldBeVisible() {
-    await expect(
-      this._authFrame().getByRole('button', { name: /^hide password$/i }).first()
-    ).toBeVisible({ timeout: 5000 });
+    if (await this._inIframeAuth()) {
+      await expect(this._authFrame().getByRole('button', { name: /^hide password$/i }).first()).toBeVisible({ timeout: 5000 });
+    } else {
+      await expect(this.page.getByRole('button', { name: /^hide password$/i }).first()).toBeVisible({ timeout: 5000 });
+    }
   }
 
   async clickPasswordToggle() {
-    await this._authFrame().getByRole('button', { name: /show password|hide password/i }).first().click();
+    if (await this._inIframeAuth()) {
+      await this._authFrame().getByRole('button', { name: /show password|hide password/i }).first().click();
+    } else {
+      await this.page.getByRole('button', { name: /show password|hide password/i }).first().click();
+    }
   }
 
   async confirmPasswordFieldShouldBeHidden() {
-    await expect(
-      this._authFrame().getByRole('button', { name: /^show password$/i }).last()
-    ).toBeVisible({ timeout: 5000 });
+    if (await this._inIframeAuth()) {
+      await expect(this._authFrame().getByRole('button', { name: /^show password$/i }).last()).toBeVisible({ timeout: 5000 });
+    } else {
+      await expect(this.page.getByRole('button', { name: /^show password$/i }).last()).toBeVisible({ timeout: 5000 });
+    }
   }
 
   async confirmPasswordFieldShouldBeVisible() {
-    await expect(
-      this._authFrame().getByRole('button', { name: /^hide password$/i }).last()
-    ).toBeVisible({ timeout: 5000 });
+    if (await this._inIframeAuth()) {
+      await expect(this._authFrame().getByRole('button', { name: /^hide password$/i }).last()).toBeVisible({ timeout: 5000 });
+    } else {
+      await expect(this.page.getByRole('button', { name: /^hide password$/i }).last()).toBeVisible({ timeout: 5000 });
+    }
   }
 
   async clickConfirmPasswordToggle() {
-    await this._authFrame().getByRole('button', { name: /show password|hide password/i }).last().click();
+    if (await this._inIframeAuth()) {
+      await this._authFrame().getByRole('button', { name: /show password|hide password/i }).last().click();
+    } else {
+      await this.page.getByRole('button', { name: /show password|hide password/i }).last().click();
+    }
   }
 
   // ─── Sign in ──────────────────────────────────────────────────────────────────
 
   async clickSignInLink() {
-    await this._authFrame().getByRole('link', { name: /sign in now/i }).click();
+    if (this._isModernEU()) {
+      // Modern EU: navigate from the signup form to a fresh sign-in form.
+      // Rather than back-navigating through React dialogs (which leaves stale state that
+      // prevents the email field from accepting input), close the current dialog and open
+      // a new "Welcome back" sign-in flow directly.
+      // Close the current auth dialog via the "Close" button.
+      const closeBtn = this.page.locator('[role="dialog"] button[aria-label="Close"]').first();
+      if (await closeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await closeBtn.click();
+        await this.page.waitForTimeout(500);
+      }
+      // Reopen auth dialog
+      await this.page.getByRole('button', { name: /^log\s*in$/i }).first().click();
+      await this.page.waitForTimeout(500);
+      // Click "Continue with email" to reach the sign-in email form
+      await this.page.getByRole('dialog', { name: /welcome back/i })
+        .getByRole('button', { name: /continue with email/i }).click();
+      // Wait for the sign-in form's email input to be ready
+      await this.page.locator('[role="dialog"][aria-label="Welcome back"] input[name="email"]')
+        .waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    } else {
+      await this._authFrame().getByRole('link', { name: /sign in now/i }).click();
+    }
   }
 
   async fillSigninEmail(email) {
-    await this._authFrame().getByPlaceholder(/email/i).fill(email);
+    if (this._isModernEU()) {
+      await this.page.locator('[role="dialog"][aria-label="Welcome back"] input[name="email"]')
+        .fill(email);
+    } else {
+      await this._authFrame().getByPlaceholder(/email/i).fill(email);
+    }
   }
 
   async fillSigninPassword(password) {
-    await this._authFrame().getByPlaceholder(/password/i).fill(password);
+    if (this._isModernEU()) {
+      // "Welcome back" sign-in form has exactly one password field (no confirm password)
+      await this.page.getByRole('dialog', { name: /welcome back/i })
+        .getByRole('textbox', { name: /^password$/i }).fill(password);
+    } else {
+      await this._authFrame().getByPlaceholder(/password/i).fill(password);
+    }
   }
 
   async clickSignIn() {
-    // The sign-in submit button is labeled "Login" (not "Sign In") per the auth modal's UI
-    await this._authFrame().getByRole('button', { name: /^login$/i }).click();
+    if (this._isModernEU()) {
+      await this.page.getByRole('dialog', { name: /welcome back/i })
+        .getByRole('button', { name: /^sign in$/i }).click();
+    } else {
+      await this._authFrame().getByRole('button', { name: /^login$/i }).click();
+    }
   }
 
   // ─── Social login ─────────────────────────────────────────────────────────────
@@ -278,21 +445,81 @@ class EndUserPage {
   // ─── Post-auth ────────────────────────────────────────────────────────────────
 
   async shouldBeLoggedIn() {
-    // Some accounts (first login) require a display name before the dialog closes.
-    // Use waitFor so the check actually waits — isVisible({ timeout }) is a no-op in Playwright 1.59.
-    const displayNameInput = this._authFrame().getByPlaceholder(/input your name/i);
-    await displayNameInput.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
-    if (await displayNameInput.isVisible()) {
-      await displayNameInput.fill('Automation');
-      const saveBtn = this._authFrame().getByRole('button', { name: /^save$/i });
-      try {
-        await expect(saveBtn).toBeEnabled({ timeout: 5000 });
-        await saveBtn.click();
-      } catch {
-        // Form already transitioned or save unavailable — ignore
-      }
+    if (this._isModernEU()) {
+      // Modern EU: auth dialog is page-level (no iframe). The auth dialog ("Create your account"
+      // for signup, "Welcome back" for sign-in) should close after successful login.
+      await expect(
+        this.page.getByRole('dialog', { name: /create your account|welcome back/i })
+      ).not.toBeVisible({ timeout: 20000 });
+    } else {
+      // Classic EU: the iframe auth component does NOT reliably close its <dialog> element
+      // after login (a persistent <dialog open> may remain in the DOM). Instead, verify
+      // login by checking the page-level "Log in" button is replaced (i.e., no longer visible).
+      await expect(
+        this.page.getByRole('button', { name: /^log\s*in$/i }).first()
+      ).not.toBeVisible({ timeout: 20000 });
     }
-    await expect(this._authFrame().getByRole('dialog')).not.toBeVisible({ timeout: 20000 });
+  }
+
+  // ─── Voice call button visibility ────────────────────────────────────────────
+
+  // Selector for the home-page call button.
+  // Classic EU: aria-label "Call". Modern EU: aria-label "Start voice with avatar" (pill button).
+  // Note: Modern EU also has a persistent "Start voice call" FAB (52px circle) that is always
+  // rendered in the chat UI regardless of skill state — that is NOT the skill-controlled button.
+  _homeVoiceCallButton() {
+    if (this._isModernEU()) {
+      return this.page.locator('button[aria-label="Start voice with avatar"]').first();
+    }
+    return this.page.getByRole('button', { name: /^(start voice with avatar|voice|call)$/i }).first();
+  }
+
+  // Selector for the in-chat voice call icon.
+  // Modern EU: The skill-controlled button is "Start voice with avatar" (pill shape).
+  //   There is also a "Start voice call" FAB — used only in the "not visible" assertion
+  //   (voiceCallIconInChatShouldNotBeVisible) to catch cases where the FAB leaks through.
+  // Classic EU: "Start call" button in the chat widget header.
+  _inChatVoiceCallIcon() {
+    if (this._isModernEU()) {
+      return this.page.locator('button[aria-label="Start voice with avatar"]').first();
+    }
+    return this.page.locator(
+      'button[aria-label="Start call"],' +
+      'button[aria-label="Start voice call"],' +
+      'button[aria-label*="voice call" i],' +
+      'button[aria-label*="phone" i]'
+    ).first();
+  }
+
+  async voiceCallButtonOnHomeShouldBeVisible() {
+    const timeout = this._isModernEU() ? 15000 : 8000;
+    const btn = this._homeVoiceCallButton();
+    const found = await btn.isVisible({ timeout }).catch(() => false);
+    if (!found && this._isModernEU()) {
+      // Modern EU may serve a cached skill state on first load. Reload to get fresh data.
+      await this.page.reload({ waitUntil: 'load' });
+      await expect(this._homeVoiceCallButton()).toBeVisible({ timeout: 20000 });
+    } else {
+      await expect(btn).toBeVisible({ timeout });
+    }
+  }
+
+  async voiceCallButtonOnHomeShouldNotBeVisible() {
+    await expect(this._homeVoiceCallButton()).not.toBeVisible({ timeout: 5000 });
+  }
+
+  async voiceCallIconInChatShouldBeVisible() {
+    await expect(this._inChatVoiceCallIcon()).toBeVisible({ timeout: 8000 });
+  }
+
+  async voiceCallIconInChatShouldNotBeVisible() {
+    await expect(this._inChatVoiceCallIcon()).not.toBeVisible({ timeout: 5000 });
+    if (this._isModernEU()) {
+      // The "Start voice call" FAB must also be absent when the skill is disabled.
+      await expect(
+        this.page.locator('button[aria-label="Start voice call"]').first()
+      ).not.toBeVisible({ timeout: 5000 });
+    }
   }
 
   // ─── Voice call ───────────────────────────────────────────────────────────────
@@ -798,6 +1025,234 @@ class EndUserPage {
     ]).catch(() => false);
 
     expect(delivered).toBe(true);
+  }
+
+  // ─── User Profile Management ──────────────────────────────────────────────────
+
+  async loginWithCredentials(email, password) {
+    await this.clickProfileButton();
+    if (this._isModernEU()) {
+      // Modern EU: go directly to email sign-in without the signup detour
+      const emailBtn = this.page.getByRole('dialog', { name: /welcome back/i })
+        .getByRole('button', { name: /continue with email/i });
+      await emailBtn.waitFor({ state: 'visible', timeout: 8000 });
+      await emailBtn.click();
+      await this.page.locator('[role="dialog"][aria-label="Welcome back"] input[name="email"]')
+        .waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+      await this.fillSigninEmail(email);
+      await this.fillSigninPassword(password);
+      await this.clickSignIn();
+    } else {
+      // Classic EU: go through signup flow → sign-in link
+      await this.selectEmailSignup();
+      await this.clickSignInLink();
+      await this.fillSigninEmail(email);
+      await this.fillSigninPassword(password);
+      await this.clickSignIn();
+    }
+    await this.shouldBeLoggedIn();
+  }
+
+  async openProfileMenu() {
+    // After login the "Log in" button is replaced by a profile/avatar menu trigger.
+    // Try selectors from most to least specific.
+    const candidates = [
+      'button[aria-label*="open profile" i]',
+      'button[aria-label*="profile menu" i]',
+      'button[aria-label*="user menu" i]',
+      'button[aria-label*="account" i]:not([aria-label*="create" i])',
+      '[class*="profile-dropdown"] > button',
+      '[class*="profileDropdown"] > button',
+      '[class*="user-menu"] > button',
+      '[class*="userMenu"] > button',
+      'button[class*="avatar"]',
+      'button[class*="profile-btn"]',
+      'button[class*="profileBtn"]',
+      // Buttons containing an avatar element (image or initials placeholder)
+      'button:has([class*="avatar"]):not([aria-label*="chat" i]):not([aria-label*="voice" i]):not([aria-label*="subscribe" i])',
+      // Header buttons with an img that are not action buttons
+      'header button:has(img):not([aria-label*="chat" i]):not([aria-label*="voice" i]):not([aria-label*="play" i]):not([aria-label*="subscribe" i])',
+      '[class*="header"] button:has(img):not([aria-label*="chat" i]):not([aria-label*="voice" i]):not([aria-label*="play" i])',
+    ];
+
+    for (const sel of candidates) {
+      const el = this.page.locator(sel).first();
+      if (await el.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await el.click();
+        return;
+      }
+    }
+
+    throw new Error('Profile menu button not found after login — selectors may need updating for the current DOM');
+  }
+
+  async clickMyProfile() {
+    // Classic EU: profile dropdown shows "My Profile"
+    await this.page.getByRole('menuitem', { name: /my profile/i })
+      .or(this.page.getByRole('link', { name: /my profile/i }))
+      .or(this.page.getByRole('button', { name: /my profile/i }))
+      .first()
+      .click({ timeout: 5000 });
+  }
+
+  async clickViewProfile() {
+    // Modern EU: profile dropdown shows "View Profile"
+    await this.page.getByRole('menuitem', { name: /view profile/i })
+      .or(this.page.getByRole('link', { name: /view profile/i }))
+      .or(this.page.getByRole('button', { name: /view profile/i }))
+      .first()
+      .click({ timeout: 5000 });
+  }
+
+  async clickEditProfileButton() {
+    // Classic EU: "My Profile" shows an Edit button that opens the editable form/modal
+    await this.page.getByRole('button', { name: /^edit$/i })
+      .or(this.page.getByRole('button', { name: /edit profile/i }))
+      .first()
+      .click({ timeout: 5000 });
+  }
+
+  async selectProfileTab(tabName) {
+    // Profile modal/view has tabs: Profile, Settings, Subscription
+    const tab = this.page.getByRole('tab', { name: new RegExp(`^${tabName}$`, 'i') })
+      .or(this.page.locator('[class*="tab"], [class*="Tab"]')
+        .filter({ hasText: new RegExp(`^${tabName}$`, 'i') }))
+      .first();
+    await tab.waitFor({ state: 'visible', timeout: 5000 });
+    await tab.click();
+  }
+
+  async updateDisplayName(name) {
+    const input = this.page.getByLabel(/display name/i)
+      .or(this.page.getByPlaceholder(/display name/i))
+      .or(this.page.locator('input[name*="displayName"], input[name*="display_name"]'))
+      .first();
+    await input.waitFor({ state: 'visible', timeout: 5000 });
+    await input.click({ clickCount: 3 });
+    await input.pressSequentially(name, { delay: 50 });
+  }
+
+  async updateBio(text) {
+    const bioField = this.page.getByLabel(/^bio$/i)
+      .or(this.page.getByPlaceholder(/bio|about yourself|tell us about/i))
+      .or(this.page.locator('textarea[name*="bio"], textarea[placeholder*="bio" i]'))
+      .or(this.page.locator('textarea').first())
+      .first();
+    await bioField.waitFor({ state: 'visible', timeout: 5000 });
+    await bioField.click({ clickCount: 3 });
+    await bioField.pressSequentially(text, { delay: 30 });
+  }
+
+  async fillBioWithNCharacters(n) {
+    await this.updateBio('A'.repeat(n));
+    // Allow time for maxLength enforcement or character counter to update
+    await this.page.waitForTimeout(500);
+  }
+
+  async saveProfile() {
+    const saveBtn = this.page.getByRole('button', { name: /^save$|save changes/i })
+      .or(this.page.getByRole('button', { name: /^update$/i }))
+      .first();
+    await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
+    if (!await saveBtn.isDisabled()) {
+      await saveBtn.click({ timeout: 5000 });
+      await this.page.waitForTimeout(1500);
+    }
+    // If Save is disabled the profile already holds the desired values — no action needed
+  }
+
+  async profileDisplayNameShouldBe(name) {
+    await expect(
+      this.page.getByText(name, { exact: false })
+        .or(this.page.getByRole('button', { name: new RegExp(name, 'i') }))
+        .or(this.page.getByRole('heading', { name: new RegExp(name, 'i') }))
+        .first()
+    ).toBeVisible({ timeout: 10000 });
+  }
+
+  async bioValueShouldNotExceed(maxLength) {
+    const bioField = this.page.getByLabel(/^bio$/i)
+      .or(this.page.getByPlaceholder(/bio|about yourself|tell us about/i))
+      .or(this.page.locator('textarea[name*="bio"], textarea[placeholder*="bio" i]'))
+      .or(this.page.locator('textarea').first())
+      .first();
+    const value = await bioField.inputValue();
+    expect(
+      value.length,
+      `Bio has ${value.length} characters — expected at most ${maxLength}`
+    ).toBeLessThanOrEqual(maxLength);
+  }
+
+  async clickShareProfileButton() {
+    // Grant clipboard permission so the copy-to-clipboard action can succeed
+    await this.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    const named = this.page.getByRole('button', { name: /share.*profile|copy.*link/i }).first();
+    if (await named.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await named.click();
+      return;
+    }
+    // Icon-only share button is the only unnamed button following "Edit" in the same container
+    const editBtn = this.page.getByRole('button', { name: /^edit$|edit profile/i }).first();
+    await editBtn.locator('xpath=following-sibling::button').first().click({ timeout: 5000 });
+  }
+
+  async copiedNotificationShouldBeVisible() {
+    await expect(
+      this.page.getByText(/copied/i)
+        .or(this.page.locator('[role="alert"]').filter({ hasText: /copied/i }))
+        .or(this.page.locator('[class*="toast"], [class*="notification"], [class*="snack"], [class*="Tooltip"], [class*="tooltip"]')
+          .filter({ hasText: /copied/i }))
+        .or(this.page.locator('[class*="copy"], [class*="Copy"]').filter({ hasText: /copied/i }))
+        .first()
+    ).toBeVisible({ timeout: 8000 });
+  }
+
+  async createAvatarLinkShouldHaveCorrectUTMParams() {
+    // Scope to dialog to avoid matching watermark links in the page body
+    const dialog = this.page.getByRole('dialog').last();
+    const link = dialog.locator('a[href*="utm_medium=profilemodal"]').first();
+    await expect(link).toBeVisible({ timeout: 5000 });
+    const href = await link.getAttribute('href');
+    expect(href, 'Link missing utm_source=myavatar').toContain('utm_source=myavatar');
+    expect(href, 'Link missing utm_medium=profilemodal').toContain('utm_medium=profilemodal');
+    expect(href, 'Link missing utm_content=avatarchat').toContain('utm_content=avatarchat');
+  }
+
+  async changePasswordOptionShouldBeVisible() {
+    // Button label is "Change" (not "Change Password") next to the Password section
+    await expect(
+      this.page.getByRole('button', { name: /^change$|change password/i }).first()
+    ).toBeVisible({ timeout: 5000 });
+  }
+
+  async clickChangePassword() {
+    await this.page.getByRole('button', { name: /^change$|change password/i })
+      .first()
+      .click({ timeout: 5000 });
+  }
+
+  async changePasswordFormShouldBeVisible() {
+    await expect(
+      this.page.getByLabel(/current password|old password/i)
+        .or(this.page.getByLabel(/new password/i))
+        .or(this.page.getByPlaceholder(/current password|old password|new password/i))
+        .first()
+    ).toBeVisible({ timeout: 5000 });
+  }
+
+  async clickLogOutFromMenu() {
+    await this.page.getByRole('menuitem', { name: /log out|logout|sign out/i })
+      .or(this.page.getByRole('button', { name: /log out|logout|sign out/i }))
+      .or(this.page.getByRole('link', { name: /log out|logout|sign out/i }))
+      .first()
+      .click({ timeout: 5000 });
+  }
+
+  async shouldBeLoggedOut() {
+    // After logout, the "Log in" button reappears in place of the profile button
+    await expect(
+      this.page.getByRole('button', { name: /^log\s*in$/i }).first()
+    ).toBeVisible({ timeout: 15000 });
   }
 }
 

@@ -35,3 +35,38 @@ Feature: CAT08 - End User
     Then I should be logged in to the end user
     And the call UI should be visible
     And a call initiation request should be fired
+
+  # ─── Modern EU ────────────────────────────────────────────────────────────────
+
+  Rule: Modern EU
+
+    Background:
+      Given I am on the modern end user page
+
+    @eu-chat @eu-modern-chat
+    Scenario: EU008M - Opening the Modern EU chat fires the required API requests and shows the Avatar's welcome message
+      When I open the text chat
+      Then a create-session request should be fired
+      And a send-message request should be fired
+      And the chat window should be visible
+      And the last message should be from the Avatar
+
+    @eu-chat @eu-modern-chat
+    Scenario: EU009M - Sending a message on the Modern EU receives a response from the Avatar
+      When I open the text chat
+      And I send the message "Hello"
+      Then the Avatar should respond
+      And the last message should be from the Avatar
+
+    @eu-call @eu-modern-call
+    Scenario: EU010M - Modern EU voice call starts automatically after login and fires a call request
+      When I click the Call button
+      Then the auth modal should be visible
+      When I select email signup
+      And I click the sign in link
+      And I fill in the signin email with "automation.arena1+1@gmail.com"
+      And I fill in the signin password with "Automation@123"
+      And I click Sign In
+      Then I should be logged in to the end user
+      And the call UI should be visible
+      And a call initiation request should be fired
