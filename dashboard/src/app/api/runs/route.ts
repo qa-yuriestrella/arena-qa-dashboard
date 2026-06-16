@@ -3,9 +3,20 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
+const STALE_MINUTES = 30
+
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Auto-expire stale runs: "running" with no github_run_id older than STALE_MINUTES
+  const staleThreshold = new Date(Date.now() - STALE_MINUTES * 60 * 1000).toISOString()
+  await supabase
+    .from('test_runs')
+    .update({ status: 'error', completed_at: new Date().toISOString() })
+    .eq('status', 'running')
+    .is('github_run_id', null)
+    .lt('created_at', staleThreshold)
 
   const { data, error } = await supabase
     .from('test_runs')

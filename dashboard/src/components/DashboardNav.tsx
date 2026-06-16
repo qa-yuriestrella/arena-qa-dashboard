@@ -4,6 +4,7 @@ import { signOut } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
 
+
 interface Props {
   user: { name?: string | null; email?: string | null; image?: string | null } | undefined
 }
@@ -14,11 +15,7 @@ export function DashboardNav({ user }: Props) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-brand flex items-center justify-center shadow-lg shadow-brand-600/30">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
+            <Image src="/logo.png" alt="MyAvatar" width={28} height={28} className="object-contain" />
             <span className="font-semibold text-white text-sm">Arena QA</span>
           </Link>
 

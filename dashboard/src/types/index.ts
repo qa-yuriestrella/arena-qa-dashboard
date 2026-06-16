@@ -12,6 +12,7 @@ export interface TestRun {
   skipped_tests: number
   completed_at: string | null
   duration_ms: number | null
+  failure_reason: string | null
 }
 
 export interface TestResult {
@@ -28,9 +29,10 @@ export interface TestResult {
 }
 
 export interface CatInfo {
-  id: string        // "CAT01"
-  name: string      // "Signup"
-  tag: string       // "signup"
+  id: string
+  name: string
+  tag: string
   description: string
   active: boolean
+  scenarios: string[]
 }

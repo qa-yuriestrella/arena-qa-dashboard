@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [runModalOpen, setRunModalOpen] = useState(false)
   const [runAllMode, setRunAllMode] = useState(false)
   const [triggering, setTriggering] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchRuns = useCallback(async () => {
@@ -30,24 +31,35 @@ export default function DashboardPage() {
     }
   }, [])
 
+  // Sync GitHub status for the running run (detects stuck runs)
+  const syncRunningStatus = useCallback(async (runId: string) => {
+    const res = await fetch(`/api/runs/${runId}`)
+    if (res.ok) {
+      const { run } = await res.json()
+      if (run && run.status !== 'running') {
+        await fetchRuns()
+      }
+    }
+  }, [fetchRuns])
+
   useEffect(() => {
     fetchRuns()
-    const interval = setInterval(() => {
-      // Poll more frequently if a run is active
-      fetchRuns()
-    }, 10000)
+    const interval = setInterval(fetchRuns, 10000)
     return () => clearInterval(interval)
   }, [fetchRuns])
 
-  // Faster polling when a run is in progress
+  // Fast polling + GitHub status sync when a run is active
   useEffect(() => {
-    if (latestRun?.status === 'running') {
-      const interval = setInterval(fetchRuns, 5000)
-      return () => clearInterval(interval)
-    }
-  }, [latestRun?.status, fetchRuns])
+    if (latestRun?.status !== 'running') return
+    const interval = setInterval(() => {
+      fetchRuns()
+      if (latestRun?.id) syncRunningStatus(latestRun.id)
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [latestRun?.status, latestRun?.id, fetchRuns, syncRunningStatus])
 
   async function triggerRun(cats: string) {
+    setRunModalOpen(false)
     setTriggering(true)
     setError(null)
     try {
@@ -61,11 +73,28 @@ export default function DashboardPage() {
         throw new Error(data.error || 'Failed to trigger run')
       }
       await fetchRuns()
-      setRunModalOpen(false)
     } catch (e: any) {
       setError(e.message)
     } finally {
       setTriggering(false)
+    }
+  }
+
+  async function cancelRun() {
+    if (!latestRun || latestRun.status !== 'running') return
+    setCancelling(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/runs/${latestRun.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Failed to cancel run')
+      }
+      await fetchRuns()
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setCancelling(false)
     }
   }
 
@@ -77,6 +106,7 @@ export default function DashboardPage() {
 
   const activeCats = CATS.filter(c => c.active)
   const inactiveCats = CATS.filter(c => !c.active)
+  const isRunning = latestRun?.status === 'running'
 
   const passRate = latestRun && latestRun.total_tests > 0
     ? Math.round((latestRun.passed_tests / latestRun.total_tests) * 100)
@@ -92,23 +122,40 @@ export default function DashboardPage() {
             {activeCats.length} test categories · Staging environment
           </p>
         </div>
-        <button
-          onClick={() => openRunModal([])}
-          disabled={triggering || latestRun?.status === 'running'}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-brand rounded-xl text-white text-sm font-semibold shadow-lg shadow-brand-600/30 hover:shadow-brand-600/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {latestRun?.status === 'running' ? (
-            <>
-              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-              Running...
-            </>
-          ) : (
-            <>
-              <PlayIcon />
-              Run All Tests
-            </>
+        <div className="flex items-center gap-3">
+          {isRunning && (
+            <button
+              onClick={cancelRun}
+              disabled={cancelling}
+              title="Cancel or force-stop this run"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-red-500/40 text-red-400 hover:bg-red-500/10 text-sm font-medium transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {cancelling ? (
+                <span className="w-3 h-3 rounded-full border border-red-400 border-t-transparent animate-spin" />
+              ) : (
+                <StopIcon />
+              )}
+              {cancelling ? 'Cancelling...' : latestRun?.github_run_id ? 'Cancel Run' : 'Force Stop'}
+            </button>
           )}
-        </button>
+          <button
+            onClick={() => openRunModal([])}
+            disabled={triggering || isRunning}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-brand rounded-xl text-white text-sm font-semibold shadow-lg shadow-brand-600/30 hover:shadow-brand-600/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isRunning ? (
+              <>
+                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                Running...
+              </>
+            ) : (
+              <>
+                <PlayIcon />
+                Run All Tests
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Latest run summary */}
@@ -132,6 +179,12 @@ export default function DashboardPage() {
                   {latestRun.cats === 'all' ? 'All tests' : latestRun.cats} ·{' '}
                   {new Date(latestRun.created_at).toLocaleString('pt-BR')}
                 </p>
+                {isRunning && !latestRun.github_run_id && (
+                  <p className="text-xs text-white/30 mt-1">Waiting for GitHub to start workflow...</p>
+                )}
+                {latestRun.status === 'error' && latestRun.failure_reason && (
+                  <p className="text-xs text-red-400/70 mt-1 max-w-xs">{latestRun.failure_reason}</p>
+                )}
               </div>
             </div>
 
@@ -163,8 +216,9 @@ export default function DashboardPage() {
       )}
 
       {error && (
-        <div className="glass rounded-xl p-4 border border-red-500/30 text-red-400 text-sm">
-          {error}
+        <div className="glass rounded-xl p-4 border border-red-500/30 text-red-400 text-sm flex items-center justify-between gap-3">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-red-400/60 hover:text-red-400 text-lg leading-none">×</button>
         </div>
       )}
 
@@ -183,7 +237,7 @@ export default function DashboardPage() {
                 cat={cat}
                 latestRun={latestRun}
                 onRun={() => openRunModal([cat.id])}
-                isRunning={latestRun?.status === 'running'}
+                isRunning={isRunning}
               />
             </motion.div>
           ))}
@@ -233,6 +287,14 @@ function PlayIcon() {
   return (
     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
       <path d="M8 5v14l11-7z" />
+    </svg>
+  )
+}
+
+function StopIcon() {
+  return (
+    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M6 6h12v12H6z" />
     </svg>
   )
 }
