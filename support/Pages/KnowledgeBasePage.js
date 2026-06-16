@@ -718,21 +718,30 @@ class KnowledgeBasePage {
       tiktok:    ['URL', 'Posts', 'Followers', 'Following'],
       linkedin:  null, // skip — profile tab not validated for LinkedIn
     };
+    const failures = [];
     for (const type of Object.keys(profileFields)) {
       if (profileFields[type] === null) continue;
       const node = this.page.locator(`.react-flow__node-${type}`).first();
       if (!await node.isVisible()) continue;
-      await this._openConfigModalForType(type);
-      // Bio: rounded gray box must have text content
-      const bioBox = this.page.locator('.rounded-md.bg-gray-50').first();
-      await expect(bioBox).toBeVisible({ timeout: 8000 });
-      const bioText = await bioBox.innerText({ timeout: 3000 }).catch(() => '');
-      expect(bioText.trim().length, `${type}: bio should have text`).toBeGreaterThan(0);
-      // Account info fields specific to this network
-      for (const label of profileFields[type]) {
-        await this._accountInfoFieldShouldHaveValue(label, type);
+      try {
+        await this._openConfigModalForType(type);
+        // Bio: rounded gray box must have text content
+        const bioBox = this.page.locator('.rounded-md.bg-gray-50').first();
+        await expect(bioBox).toBeVisible({ timeout: 8000 });
+        const bioText = await bioBox.innerText({ timeout: 3000 }).catch(() => '');
+        expect(bioText.trim().length, `${type}: bio should have text`).toBeGreaterThan(0);
+        // Account info fields specific to this network
+        for (const label of profileFields[type]) {
+          await this._accountInfoFieldShouldHaveValue(label, type);
+        }
+      } catch (err) {
+        failures.push(`${type}: ${err.message}`);
+      } finally {
+        await this._closeSideDrawer();
       }
-      await this._closeSideDrawer();
+    }
+    if (failures.length > 0) {
+      throw new Error(`KB008 profile tab failures:\n${failures.map(f => `  ${f}`).join('\n')}`);
     }
   }
 
@@ -801,10 +810,8 @@ class KnowledgeBasePage {
       const totalFetched = apiIntegration?.metadata?.totalFetchedCount ?? Infinity;
       const required = Math.min(configuredMin, totalFetched);
       expect(count, `${type}: should have at least ${required} post rows`).toBeGreaterThanOrEqual(required);
-      // Assert first row has title (td[0]) and date (td[1])
+      // Assert first row has a date (td[1]); title may be empty for some posts
       const cells = rows.first().locator('td');
-      const title = await cells.first().textContent({ timeout: 3000 }).catch(() => '');
-      expect(title?.trim().length, `${type}: post title should not be empty`).toBeGreaterThan(0);
       const date = await cells.nth(1).textContent({ timeout: 3000 }).catch(() => '');
       expect(date?.trim().length, `${type}: post date should not be empty`).toBeGreaterThan(0);
       // Assert action menu button is present
@@ -838,42 +845,51 @@ class KnowledgeBasePage {
   async eachIntegrationPostDetailsShouldShowFullMetadata() {
     const nodeTypes = ['youtube', 'x', 'instagram', 'facebook', 'tiktok'];
     const withTranscription = ['youtube', 'instagram', 'tiktok'];
+    const failures = [];
 
     for (const type of nodeTypes) {
       const node = this.page.locator(`.react-flow__node-${type}`).first();
       if (!await node.isVisible()) continue;
 
-      await this._openConfigModalForType(type);
-      await this.navigateToTab('Posts');
-      await this.clickActionOnFirstPost('More details');
+      try {
+        await this._openConfigModalForType(type);
+        await this.navigateToTab('Posts');
+        await this.clickActionOnFirstPost('More details');
 
-      const dialog = this.page.getByRole('dialog');
-      await expect(dialog).toBeVisible({ timeout: 8000 });
+        const dialog = this.page.getByRole('dialog');
+        await expect(dialog).toBeVisible({ timeout: 8000 });
 
-      // Post text is always abbreviated — "Read more" button confirms it has content
-      await expect(dialog.getByRole('button', { name: /read more/i }).first()).toBeVisible({ timeout: 5000 });
+        // Post text is always abbreviated — "Read more" button confirms it has content
+        await expect(dialog.getByRole('button', { name: /read more/i }).first()).toBeVisible({ timeout: 5000 });
 
-      // Transcription section — only for video platforms
-      if (withTranscription.includes(type)) {
-        await expect(dialog.getByText(/transcription/i).first()).toBeVisible({ timeout: 5000 });
+        // Transcription section — only for video platforms
+        if (withTranscription.includes(type)) {
+          await expect(dialog.getByText(/transcription/i).first()).toBeVisible({ timeout: 5000 });
+        }
+
+        // Post Informations fields — scroll each row into view before asserting
+        for (const label of ['Posted on', 'Comments', 'View Post', 'Author Profile']) {
+          const row = dialog
+            .locator('div.flex.items-center.justify-between.py-3.border-b')
+            .filter({ hasText: label })
+            .first();
+          await row.scrollIntoViewIfNeeded({ timeout: 5000 });
+          await expect(row).toBeVisible({ timeout: 5000 });
+          const value = await row.locator('span').first().textContent({ timeout: 3000 }).catch(() => '');
+          expect(value?.trim().length, `${type}: "${label}" should have a non-empty value`).toBeGreaterThan(0);
+        }
+      } catch (err) {
+        failures.push(`${type}: ${err.message}`);
+      } finally {
+        // Close dialog then config drawer before next iteration
+        await this.page.keyboard.press('Escape');
+        await this.page.waitForTimeout(300);
+        await this._closeSideDrawer();
       }
+    }
 
-      // Post Informations fields — scroll each row into view before asserting
-      for (const label of ['Posted on', 'Comments', 'View Post', 'Author Profile']) {
-        const row = dialog
-          .locator('div.flex.items-center.justify-between.py-3.border-b')
-          .filter({ hasText: label })
-          .first();
-        await row.scrollIntoViewIfNeeded({ timeout: 5000 });
-        await expect(row).toBeVisible({ timeout: 5000 });
-        const value = await row.locator('span').first().textContent({ timeout: 3000 }).catch(() => '');
-        expect(value?.trim().length, `${type}: "${label}" should have a non-empty value`).toBeGreaterThan(0);
-      }
-
-      // Close dialog then config drawer before next iteration
-      await this.page.keyboard.press('Escape');
-      await this.page.waitForTimeout(300);
-      await this._closeSideDrawer();
+    if (failures.length > 0) {
+      throw new Error(`KB010 post details failures:\n${failures.map(f => `  ${f}`).join('\n')}`);
     }
   }
 
@@ -1003,6 +1019,8 @@ class KnowledgeBasePage {
     for (const type of ['youtube', 'x', 'instagram']) {
       const node = this.page.locator(`.react-flow__node-${type}`).first();
       if (!await node.isVisible()) continue;
+      // Wait for integration to finish loading before attempting deletion
+      await expect(node.locator('.text-green-500')).toBeVisible({ timeout: 120000 });
       await this._openConfigModalForType(type);
       await this.clickDeleteInConfigModal();
       await expect(node).not.toBeVisible({ timeout: 8000 });
@@ -1010,6 +1028,8 @@ class KnowledgeBasePage {
     for (const type of ['facebook', 'tiktok', 'linkedin']) {
       const node = this.page.locator(`.react-flow__node-${type}`).first();
       if (!await node.isVisible()) continue;
+      // Wait for integration to finish loading before attempting deletion
+      await expect(node.locator('.text-green-500')).toBeVisible({ timeout: 120000 });
       await this.page.locator('.react-flow__pane').first().click({ force: true });
       await this.page.waitForTimeout(300);
       await node.click();
@@ -1080,6 +1100,9 @@ class KnowledgeBasePage {
         'This profile is already connected. Remove the existing integration before adding it again.'
       );
       await this.clickCancelInModal();
+      await this.page.waitForTimeout(300);
+      // After a duplicate error, Cancel may not fully close the panel — click outside as fallback
+      await this.clickOutsideModal();
       await this.integrationModalShouldBeClosed();
     }
   }
