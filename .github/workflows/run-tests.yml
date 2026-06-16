@@ -61,14 +61,10 @@ jobs:
         run: |
           CATS="${{ inputs.cats }}"
           GREP="${{ inputs.scenario_grep }}"
-          GREP_FLAG=""
-          if [ -n "$GREP" ]; then
-            GREP_FLAG="--grep $(printf '%q' "$GREP")"
-          fi
-          if [ "$CATS" = "all" ]; then
-            npx playwright test $GREP_FLAG || true
-          else
-            FILES=""
+
+          # Build file list (empty = run all)
+          FILES=""
+          if [ "$CATS" != "all" ]; then
             IFS=',' read -ra CAT_LIST <<< "$CATS"
             for CAT in "${CAT_LIST[@]}"; do
               CAT=$(echo "$CAT" | xargs)
@@ -81,7 +77,16 @@ jobs:
               echo "No matching spec files found for: $CATS"
               exit 0
             fi
-            npx playwright test $FILES $GREP_FLAG || true
+          fi
+
+          # Run with or without scenario grep
+          if [ -n "$GREP" ]; then
+            # Escape regex metacharacters so the literal title is matched
+            GREP_ESCAPED=$(node -e "console.log(process.argv[1].replace(/[.*+?^\${}()|[\]\\\\]/g,'\\\\$&'))" -- "$GREP")
+            echo "Running with grep: $GREP_ESCAPED"
+            npx playwright test $FILES --grep "$GREP_ESCAPED" || true
+          else
+            npx playwright test $FILES || true
           fi
 
       - name: Save results to Supabase
