@@ -33,7 +33,7 @@ export function RunDetail({ run, results }: Props) {
     <div className="space-y-8">
       {/* Back */}
       <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-brand-500 hover:text-brand-400 transition-colors">
-        ← Back to Dashboard
+        Back to Dashboard
       </Link>
 
       {/* Summary */}
