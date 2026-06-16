@@ -130,10 +130,15 @@ export function RunDetail({ run, results }: Props) {
                 <div className="flex items-center gap-3 px-4 py-3 bg-white/2">
                   <span className="text-xs font-mono text-brand-500 font-bold">{cat}</span>
                   <span className="text-xs text-white/30">{catResults.length} tests</span>
-                  <div className="ml-auto flex items-center gap-2">
+                  <div className="ml-auto flex items-center gap-3">
                     <span className="text-xs text-emerald-400">{catPass} passed</span>
                     {catFail > 0 && <span className="text-xs text-red-400">{catFail} failed</span>}
-                    <ProgressRing percentage={catPassRate} size={28} />
+                    <div className="flex items-center gap-1.5">
+                      <ProgressRing percentage={catPassRate} size={24} showText={false} />
+                      <span className="text-xs font-semibold" style={{ color: catPassRate >= 80 ? '#10b981' : catPassRate >= 50 ? '#f59e0b' : '#ef4444' }}>
+                        {catPassRate}%
+                      </span>
+                    </div>
                   </div>
                 </div>
                 {/* Scenarios */}

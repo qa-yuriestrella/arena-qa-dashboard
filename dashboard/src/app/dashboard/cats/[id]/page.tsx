@@ -35,10 +35,16 @@ export default function CatDetailPage() {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const cat = CATS.find(c => c.id === id)
+  const storageKey = `active-run-${id}`
 
-  // Load latest historical run on mount
+  // Load latest historical run on mount + restore active run from localStorage
   useEffect(() => {
     if (!cat) return
+
+    // Restore in-progress run from localStorage (survives navigation)
+    const savedRunId = localStorage.getItem(storageKey)
+    if (savedRunId) setActiveRunId(savedRunId)
+
     fetch('/api/runs')
       .then(r => r.json())
       .then((runs: TestRun[]) => {
@@ -68,16 +74,16 @@ export default function CatDetailPage() {
       setActiveRun(run)
 
       if (run.status !== 'running') {
-        // Done — load results and stop polling
+        // Done — stop polling and clear localStorage
         if (pollingRef.current) clearInterval(pollingRef.current)
+        localStorage.removeItem(storageKey)
         const catResults = (data.results as TestResult[] || []).filter(r => r.cat === cat?.id)
         setActiveResults(catResults)
-        // Also refresh the scenario dots
         setResults(catResults)
         setLatestRun(run)
       }
     } catch {}
-  }, [cat?.id])
+  }, [cat?.id, storageKey])
 
   useEffect(() => {
     if (!activeRunId) return
@@ -128,6 +134,7 @@ export default function CatDetailPage() {
         throw new Error(data.error || 'Failed to trigger run')
       }
       const { runId } = await res.json()
+      localStorage.setItem(storageKey, runId)
       setActiveRunId(runId)
     } catch (e: any) {
       setTriggerError(e.message)

@@ -1,9 +1,10 @@
 interface Props {
   percentage: number
   size?: number
+  showText?: boolean
 }
 
-export function ProgressRing({ percentage, size = 56 }: Props) {
+export function ProgressRing({ percentage, size = 56, showText = true }: Props) {
   const radius = (size - 8) / 2
   const circumference = 2 * Math.PI * radius
   const strokeDashoffset = circumference - (percentage / 100) * circumference
@@ -34,7 +35,7 @@ export function ProgressRing({ percentage, size = 56 }: Props) {
           style={{ transition: 'stroke-dashoffset 0.5s ease' }}
         />
       </svg>
-      <span className="absolute text-xs font-bold text-white">{percentage}%</span>
+      {showText && <span className="absolute text-xs font-bold text-white">{percentage}%</span>}
     </div>
   )
 }
