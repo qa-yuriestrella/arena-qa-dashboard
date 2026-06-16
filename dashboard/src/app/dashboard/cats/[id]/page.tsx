@@ -88,7 +88,7 @@ export default function CatDetailPage() {
   useEffect(() => {
     if (!activeRunId) return
     pollActiveRun(activeRunId)
-    pollingRef.current = setInterval(() => pollActiveRun(activeRunId), 5000)
+    pollingRef.current = setInterval(() => pollActiveRun(activeRunId), 2000)
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current)
     }

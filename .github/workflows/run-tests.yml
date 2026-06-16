@@ -53,7 +53,15 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
 
+      - name: Cache generated BDD specs
+        uses: actions/cache@v4
+        id: bdd-cache
+        with:
+          path: .features-gen
+          key: bddgen-${{ hashFiles('tests/features/**/*.feature') }}
+
       - name: Generate BDD test files
+        if: steps.bdd-cache.outputs.cache-hit != 'true'
         run: yarn bddgen
 
       - name: Run tests
