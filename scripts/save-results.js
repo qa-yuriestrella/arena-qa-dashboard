@@ -46,6 +46,7 @@ async function main() {
     await supabaseFetch(`test_runs?id=eq.${RUN_ID}`, 'PATCH', {
       status: 'error',
       completed_at: new Date().toISOString(),
+      failure_reason: 'Test results file not found — tests may not have run. Check the GitHub Actions log.',
     });
     process.exit(0);
   }
@@ -112,7 +113,16 @@ async function main() {
   console.log(`Saved ${results.length} results: ${passed} passed, ${failed} failed, ${skipped} skipped`);
 }
 
-main().catch((err) => {
+main().catch(async (err) => {
   console.error('save-results.js failed:', err.message);
+  if (RUN_ID) {
+    try {
+      await supabaseFetch(`test_runs?id=eq.${RUN_ID}`, 'PATCH', {
+        status: 'error',
+        completed_at: new Date().toISOString(),
+        failure_reason: `save-results.js crashed: ${err.message}`,
+      });
+    } catch {}
+  }
   process.exit(1);
 });
