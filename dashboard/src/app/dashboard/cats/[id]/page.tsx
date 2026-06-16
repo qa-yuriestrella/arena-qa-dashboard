@@ -235,11 +235,28 @@ export default function CatDetailPage() {
                     </span>
                   )}
 
+                  {/* Trace link */}
+                  {result?.trace_url && (
+                    <a
+                      href={`https://trace.playwright.dev/?trace=${encodeURIComponent(result.trace_url)}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Abrir Trace Viewer"
+                      className="opacity-0 group-hover/item:opacity-100 flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-brand-600/15 hover:bg-brand-600/30 text-brand-400 hover:text-white text-xs transition-all"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                          d="M15 10l4.553-2.069A1 1 0 0121 8.882v6.236a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+                      </svg>
+                      Trace
+                    </a>
+                  )}
+
                   {/* Error indicator */}
                   {result?.status === 'failed' && result.error_message && (
                     <Link
                       href={`/dashboard/runs/${latestRun?.id}`}
-                      className="text-xs text-red-400/70 hover:text-red-400 flex-shrink-0"
+                      className="opacity-0 group-hover/item:opacity-100 text-xs text-red-400/70 hover:text-red-400 flex-shrink-0"
                       title={result.error_message}
                     >
                       ver erro

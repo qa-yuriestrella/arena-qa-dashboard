@@ -25,6 +25,7 @@ export interface TestResult {
   error_message: string | null
   video_url: string | null
   screenshot_url: string | null
+  trace_url: string | null
   created_at: string
 }
 

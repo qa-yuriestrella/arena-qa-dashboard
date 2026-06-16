@@ -52,7 +52,7 @@ module.exports = defineConfig({
     // Captura automática em caso de falha
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    trace: 'on-first-retry',
+    trace: 'on',
 
     // Viewport padrão
     viewport: { width: 1280, height: 720 },

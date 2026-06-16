@@ -11,8 +11,8 @@ const RUN_ID = process.env.RUN_ID;
 const GITHUB_RUN_URL = process.env.GITHUB_RUN_URL;
 const RESULTS_FILE = path.join(__dirname, '..', 'test-results', 'results.json');
 
-async function supabaseFetch(path, method = 'GET', body = null) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+async function supabaseFetch(urlPath, method = 'GET', body = null) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${urlPath}`, {
     method,
     headers: {
       apikey: SUPABASE_SERVICE_KEY,
@@ -24,9 +24,41 @@ async function supabaseFetch(path, method = 'GET', body = null) {
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Supabase ${method} ${path} → ${res.status}: ${text}`);
+    throw new Error(`Supabase ${method} ${urlPath} → ${res.status}: ${text}`);
   }
   return method === 'GET' ? res.json() : null;
+}
+
+async function uploadTrace(localPath, scenarioTitle) {
+  if (!localPath || !fs.existsSync(localPath)) return null;
+  try {
+    const safeName = scenarioTitle.replace(/[^a-zA-Z0-9\-]/g, '_').substring(0, 120);
+    const storagePath = `${RUN_ID}/${safeName}.zip`;
+    const fileBuffer = fs.readFileSync(localPath);
+
+    const res = await fetch(
+      `${SUPABASE_URL}/storage/v1/object/traces/${storagePath}`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'Content-Type': 'application/zip',
+          'x-upsert': 'true',
+        },
+        body: fileBuffer,
+      }
+    );
+
+    if (!res.ok) {
+      console.warn(`  trace upload failed for "${scenarioTitle}": ${res.status}`);
+      return null;
+    }
+
+    return `${SUPABASE_URL}/storage/v1/object/public/traces/${storagePath}`;
+  } catch (err) {
+    console.warn(`  trace upload error for "${scenarioTitle}": ${err.message}`);
+    return null;
+  }
 }
 
 function extractCat(titlePath) {
@@ -54,7 +86,8 @@ async function main() {
   const raw = JSON.parse(fs.readFileSync(RESULTS_FILE, 'utf8'));
   const suites = raw.suites || [];
 
-  const results = [];
+  // First pass: collect raw results with trace paths (sync)
+  const rawResults = [];
   let passed = 0, failed = 0, skipped = 0;
 
   function walkSuites(suitesArr, titlePath = []) {
@@ -74,14 +107,16 @@ async function main() {
             const result = test.results?.[0] || {};
             const errorMsg = result.error?.message?.substring(0, 2000) || null;
             const duration = result.duration || 0;
+            const traceAttachment = result.attachments?.find(a => a.name === 'trace');
 
-            results.push({
+            rawResults.push({
               run_id: RUN_ID,
               cat: extractCat(currentPath),
               scenario_name: spec.title,
               status,
               duration_ms: duration,
               error_message: errorMsg,
+              _tracePath: traceAttachment?.path || null,
             });
           }
         }
@@ -91,6 +126,23 @@ async function main() {
   }
 
   walkSuites(suites);
+
+  // Second pass: upload trace files (async, in parallel batches of 5)
+  console.log(`Uploading traces for ${rawResults.length} scenarios...`);
+  const BATCH = 5;
+  const results = [];
+
+  for (let i = 0; i < rawResults.length; i += BATCH) {
+    const batch = rawResults.slice(i, i + BATCH);
+    const batchResults = await Promise.all(
+      batch.map(async (r) => {
+        const traceUrl = await uploadTrace(r._tracePath, r.scenario_name);
+        const { _tracePath, ...result } = r;
+        return { ...result, trace_url: traceUrl };
+      })
+    );
+    results.push(...batchResults);
+  }
 
   const total = passed + failed + skipped;
 
@@ -110,7 +162,7 @@ async function main() {
     github_run_url: GITHUB_RUN_URL,
   });
 
-  console.log(`Saved ${results.length} results: ${passed} passed, ${failed} failed, ${skipped} skipped`);
+  console.log(`Done. ${passed} passed, ${failed} failed, ${skipped} skipped.`);
 }
 
 main().catch(async (err) => {

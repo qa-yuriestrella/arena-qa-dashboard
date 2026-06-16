@@ -10,6 +10,10 @@ interface Props {
   results: TestResult[]
 }
 
+function traceUrl(url: string) {
+  return `https://trace.playwright.dev/?trace=${encodeURIComponent(url)}`
+}
+
 export function RunDetail({ run, results }: Props) {
   const passRate = run.total_tests > 0
     ? Math.round((run.passed_tests / run.total_tests) * 100)
@@ -43,6 +47,9 @@ export function RunDetail({ run, results }: Props) {
               </div>
               <p className="text-white font-semibold">{run.cats === 'all' ? 'Full Test Run' : run.cats}</p>
               <p className="text-xs text-white/40">{new Date(run.created_at).toLocaleString('pt-BR')}</p>
+              {run.status === 'error' && run.failure_reason && (
+                <p className="text-xs text-red-400/70 mt-1 max-w-sm">{run.failure_reason}</p>
+              )}
             </div>
           </div>
 
@@ -80,9 +87,22 @@ export function RunDetail({ run, results }: Props) {
           <div className="space-y-3">
             {failed.map(result => (
               <div key={result.id} className="glass rounded-xl p-4 border border-red-500/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-mono text-brand-500 bg-brand-600/10 px-1.5 py-0.5 rounded">{result.cat}</span>
-                  <span className="text-sm font-medium text-white">{result.scenario_name}</span>
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-mono text-brand-500 bg-brand-600/10 px-1.5 py-0.5 rounded">{result.cat}</span>
+                    <span className="text-sm font-medium text-white">{result.scenario_name}</span>
+                  </div>
+                  {result.trace_url && (
+                    <a
+                      href={traceUrl(result.trace_url)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600/20 hover:bg-brand-600/40 text-brand-400 hover:text-white text-xs font-medium transition-all"
+                    >
+                      <TraceIcon />
+                      Ver Trace
+                    </a>
+                  )}
                 </div>
                 {result.error_message && (
                   <pre className="text-xs text-red-400/80 bg-red-400/5 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap font-mono mt-2">
@@ -118,13 +138,25 @@ export function RunDetail({ run, results }: Props) {
                 </div>
                 {/* Scenarios */}
                 {catResults.map(result => (
-                  <div key={result.id} className="flex items-center gap-3 px-4 py-2 hover:bg-white/1 border-t border-white/3">
+                  <div key={result.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/1 border-t border-white/3 group">
                     <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
                       result.status === 'passed' ? 'bg-emerald-400' :
                       result.status === 'failed' ? 'bg-red-400' : 'bg-amber-400'
                     }`} />
                     <span className="text-xs text-white/70 flex-1">{result.scenario_name}</span>
-                    <span className="text-xs text-white/30">{(result.duration_ms / 1000).toFixed(1)}s</span>
+                    <span className="text-xs text-white/25 flex-shrink-0">{(result.duration_ms / 1000).toFixed(1)}s</span>
+                    {result.trace_url && (
+                      <a
+                        href={traceUrl(result.trace_url)}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Abrir Trace Viewer"
+                        className="opacity-0 group-hover:opacity-100 flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-brand-600/15 hover:bg-brand-600/30 text-brand-400 hover:text-white text-xs transition-all"
+                      >
+                        <TraceIcon />
+                        Trace
+                      </a>
+                    )}
                   </div>
                 ))}
               </div>
@@ -133,5 +165,14 @@ export function RunDetail({ run, results }: Props) {
         </div>
       </div>
     </div>
+  )
+}
+
+function TraceIcon() {
+  return (
+    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M15 10l4.553-2.069A1 1 0 0121 8.882v6.236a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+    </svg>
   )
 }
