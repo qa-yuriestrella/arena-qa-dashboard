@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -10,6 +10,10 @@ import { RunModal } from '@/components/RunModal'
 import { StatusBadge } from '@/components/StatusBadge'
 import type { TestRun, TestResult } from '@/types'
 
+function traceViewerUrl(url: string) {
+  return `https://trace.playwright.dev/?trace=${encodeURIComponent(url)}`
+}
+
 export default function CatDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
@@ -18,16 +22,21 @@ export default function CatDetailPage() {
   const [runModalOpen, setRunModalOpen] = useState(false)
   const [pendingScenarioGrep, setPendingScenarioGrep] = useState<string | undefined>()
   const [triggering, setTriggering] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
+  const [triggerError, setTriggerError] = useState<string | null>(null)
 
+  // Latest historical run results (shown as dots on first load)
   const [latestRun, setLatestRun] = useState<TestRun | null>(null)
   const [results, setResults] = useState<TestResult[]>([])
-  const [loadingResults, setLoadingResults] = useState(true)
+
+  // Active run (just triggered — we poll this)
+  const [activeRunId, setActiveRunId] = useState<string | null>(null)
+  const [activeRun, setActiveRun] = useState<TestRun | null>(null)
+  const [activeResults, setActiveResults] = useState<TestResult[] | null>(null)
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const cat = CATS.find(c => c.id === id)
 
-  // Fetch latest run that includes this CAT
+  // Load latest historical run on mount
   useEffect(() => {
     if (!cat) return
     fetch('/api/runs')
@@ -36,28 +45,54 @@ export default function CatDetailPage() {
         const run = runs.find(r =>
           r.cats === 'all' || r.cats === cat.id || r.cats.split(',').includes(cat.id)
         )
-        if (run) {
-          setLatestRun(run)
-          return fetch(`/api/runs/${run.id}`)
-        }
+        if (!run) return
+        setLatestRun(run)
+        return fetch(`/api/runs/${run.id}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data?.results) {
+              setResults(data.results.filter((r: TestResult) => r.cat === cat.id))
+            }
+          })
       })
-      .then(r => r?.json())
-      .then(data => {
-        if (data?.results) {
-          setResults(data.results.filter((r: TestResult) => r.cat === cat.id))
-        }
-        setLoadingResults(false)
-      })
-      .catch(() => setLoadingResults(false))
+      .catch(() => {})
   }, [cat?.id])
+
+  // Poll the active run until it finishes
+  const pollActiveRun = useCallback(async (runId: string) => {
+    try {
+      const res = await fetch(`/api/runs/${runId}`)
+      if (!res.ok) return
+      const data = await res.json()
+      const run: TestRun = data.run
+      setActiveRun(run)
+
+      if (run.status !== 'running') {
+        // Done — load results and stop polling
+        if (pollingRef.current) clearInterval(pollingRef.current)
+        const catResults = (data.results as TestResult[] || []).filter(r => r.cat === cat?.id)
+        setActiveResults(catResults)
+        // Also refresh the scenario dots
+        setResults(catResults)
+        setLatestRun(run)
+      }
+    } catch {}
+  }, [cat?.id])
+
+  useEffect(() => {
+    if (!activeRunId) return
+    pollActiveRun(activeRunId)
+    pollingRef.current = setInterval(() => pollActiveRun(activeRunId), 5000)
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current)
+    }
+  }, [activeRunId, pollActiveRun])
 
   if (!cat) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
         <p className="text-white/40">Test category not found.</p>
-        <button onClick={() => router.back()} className="text-sm text-brand-400 hover:text-brand-300">
-          ← Back
-        </button>
+        <button onClick={() => router.back()} className="text-sm text-brand-400 hover:text-brand-300">← Back</button>
       </div>
     )
   }
@@ -75,8 +110,9 @@ export default function CatDetailPage() {
   async function triggerRun(cats: string) {
     setRunModalOpen(false)
     setTriggering(true)
-    setError(null)
-    setSuccess(null)
+    setTriggerError(null)
+    setActiveRun(null)
+    setActiveResults(null)
     try {
       const res = await fetch('/api/trigger', {
         method: 'POST',
@@ -91,28 +127,27 @@ export default function CatDetailPage() {
         const data = await res.json()
         throw new Error(data.error || 'Failed to trigger run')
       }
-      const label = pendingScenarioGrep
-        ? `"${pendingScenarioGrep.substring(0, 50)}..."`
-        : id
-      setSuccess(`Run triggered for ${label}. Check the dashboard for status.`)
+      const { runId } = await res.json()
+      setActiveRunId(runId)
     } catch (e: any) {
-      setError(e.message)
+      setTriggerError(e.message)
     } finally {
       setTriggering(false)
     }
   }
 
-  const resultByScenario = results.reduce<Record<string, TestResult>>((acc, r) => {
+  // Which results to show for scenario dots — active run wins over historical
+  const displayResults = activeResults ?? results
+  const resultByScenario = displayResults.reduce<Record<string, TestResult>>((acc, r) => {
     acc[r.scenario_name] = r
     return acc
   }, {})
 
-  const passCount = results.filter(r => r.status === 'passed').length
-  const failCount = results.filter(r => r.status === 'failed').length
-  const hasResults = results.length > 0
+  const isRunning = activeRun?.status === 'running'
+  const runDone = activeRun && activeRun.status !== 'running'
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -126,10 +161,8 @@ export default function CatDetailPage() {
           </button>
           <div>
             <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-xs font-mono text-brand-500 bg-brand-600/10 px-1.5 py-0.5 rounded">
-                {cat.id}
-              </span>
-              {latestRun && <StatusBadge status={latestRun.status} />}
+              <span className="text-xs font-mono text-brand-500 bg-brand-600/10 px-1.5 py-0.5 rounded">{cat.id}</span>
+              {(activeRun ?? latestRun) && <StatusBadge status={(activeRun ?? latestRun)!.status} />}
             </div>
             <h1 className="text-2xl font-bold text-white">{cat.name}</h1>
             <p className="text-sm text-white/40 mt-0.5">{cat.description}</p>
@@ -137,9 +170,9 @@ export default function CatDetailPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {latestRun && (
+          {(activeRun ?? latestRun) && (
             <Link
-              href={`/dashboard/runs/${latestRun.id}`}
+              href={`/dashboard/runs/${(activeRun ?? latestRun)!.id}`}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white/60 hover:text-white hover:border-white/20 text-sm transition-all"
             >
               View Details
@@ -147,10 +180,12 @@ export default function CatDetailPage() {
           )}
           <button
             onClick={openRunAll}
-            disabled={triggering}
+            disabled={triggering || isRunning}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-brand rounded-xl text-white text-sm font-semibold shadow-lg shadow-brand-600/30 hover:shadow-brand-600/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {triggering ? (
+            {isRunning ? (
+              <><span className="w-2 h-2 rounded-full bg-white animate-pulse" />Running...</>
+            ) : triggering ? (
               <><span className="w-2 h-2 rounded-full bg-white animate-pulse" />Triggering...</>
             ) : (
               <><PlayIcon />Run {cat.id}</>
@@ -159,47 +194,120 @@ export default function CatDetailPage() {
         </div>
       </div>
 
-      {error && (
+      {/* Trigger error */}
+      {triggerError && (
         <div className="glass rounded-xl p-4 border border-red-500/30 text-red-400 text-sm flex items-center justify-between gap-3">
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-400/60 hover:text-red-400 text-lg leading-none">×</button>
+          <span>{triggerError}</span>
+          <button onClick={() => setTriggerError(null)} className="text-red-400/60 hover:text-red-400 text-lg leading-none">×</button>
         </div>
       )}
 
-      {success && (
-        <div className="glass rounded-xl p-4 border border-emerald-500/30 text-emerald-400 text-sm flex items-center justify-between gap-3">
-          <span>{success}</span>
-          <button onClick={() => setSuccess(null)} className="text-emerald-400/60 hover:text-emerald-400 text-lg leading-none">×</button>
-        </div>
-      )}
-
-      {/* Last run summary for this CAT */}
-      {hasResults && latestRun && (
-        <div className="glass rounded-xl p-4 flex items-center gap-6">
-          <div className="text-xs text-white/40 uppercase tracking-wider">Latest Run</div>
-          <div className="flex items-center gap-4">
-            <span className="text-emerald-400 font-semibold text-sm">{passCount} passed</span>
-            {failCount > 0 && <span className="text-red-400 font-semibold text-sm">{failCount} failed</span>}
-            <span className="text-white/30 text-xs">{new Date(latestRun.created_at).toLocaleString('pt-BR')}</span>
-          </div>
-          <Link
-            href={`/dashboard/runs/${latestRun.id}`}
-            className="ml-auto text-xs text-brand-500 hover:text-brand-400 transition-colors"
+      {/* Active run status panel */}
+      <AnimatePresence>
+        {activeRun && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`glass rounded-xl p-4 border ${
+              isRunning ? 'border-brand-500/30' :
+              activeRun.status === 'passed' ? 'border-emerald-500/30' :
+              activeRun.status === 'failed' ? 'border-red-500/30' :
+              'border-white/10'
+            }`}
           >
-            View errors →
-          </Link>
-        </div>
-      )}
+            <div className="flex items-center gap-4">
+              {/* Spinner or icon */}
+              {isRunning ? (
+                <div className="w-8 h-8 rounded-full border-2 border-brand-500 border-t-transparent animate-spin flex-shrink-0" />
+              ) : activeRun.status === 'passed' ? (
+                <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              ) : activeRun.status === 'failed' ? (
+                <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              )}
+
+              <div className="flex-1 min-w-0">
+                {isRunning ? (
+                  <>
+                    <p className="text-sm font-medium text-white">Running tests on GitHub Actions...</p>
+                    {!activeRun.github_run_id && (
+                      <p className="text-xs text-white/30 mt-0.5">Waiting for workflow to start</p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className={`text-sm font-medium ${
+                      activeRun.status === 'passed' ? 'text-emerald-400' :
+                      activeRun.status === 'failed' ? 'text-red-400' : 'text-white/60'
+                    }`}>
+                      {activeRun.status === 'passed' ? 'All scenarios passed' :
+                       activeRun.status === 'failed' ? `${activeRun.failed_tests} scenario${activeRun.failed_tests !== 1 ? 's' : ''} failed` :
+                       activeRun.status === 'error' ? 'Run error — check details' :
+                       'Run cancelled'}
+                    </p>
+                    {activeRun.total_tests > 0 && (
+                      <p className="text-xs text-white/40 mt-0.5">
+                        {activeRun.passed_tests} passed · {activeRun.failed_tests} failed · {activeRun.skipped_tests} skipped
+                        {activeRun.status === 'error' && activeRun.failure_reason && (
+                          <span className="text-red-400/70"> — {activeRun.failure_reason}</span>
+                        )}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 flex-shrink-0">
+                {activeRun.github_run_url && (
+                  <a
+                    href={activeRun.github_run_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-brand-500 hover:text-brand-400 transition-colors"
+                  >
+                    GitHub ↗
+                  </a>
+                )}
+                <Link
+                  href={`/dashboard/runs/${activeRun.id}`}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-white/60 hover:text-white hover:border-white/20 transition-all"
+                >
+                  View Details
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Scenarios list */}
       <div className="glass rounded-2xl p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider">
-            Test Scenarios
-          </h2>
-          <span className="text-xs text-white/30">
-            {cat.scenarios.length} scenarios
-          </span>
+          <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider">Test Scenarios</h2>
+          <div className="flex items-center gap-3">
+            {displayResults.length > 0 && (
+              <span className="text-xs text-white/30">
+                <span className="text-emerald-400">{displayResults.filter(r => r.status === 'passed').length} passed</span>
+                {displayResults.filter(r => r.status === 'failed').length > 0 && (
+                  <> · <span className="text-red-400">{displayResults.filter(r => r.status === 'failed').length} failed</span></>
+                )}
+              </span>
+            )}
+            <span className="text-xs text-white/20">{cat.scenarios.length} scenarios</span>
+          </div>
         </div>
 
         {cat.scenarios.length === 0 ? (
@@ -208,11 +316,15 @@ export default function CatDetailPage() {
           <ul className="space-y-1">
             {cat.scenarios.map((scenario, i) => {
               const result = resultByScenario[scenario]
-              const statusColor = result
-                ? result.status === 'passed' ? 'bg-emerald-400'
-                  : result.status === 'failed' ? 'bg-red-400'
-                  : 'bg-amber-400'
-                : 'bg-white/15'
+              const isThisRunning = isRunning
+
+              const dotColor = isThisRunning
+                ? 'bg-white/20 animate-pulse'
+                : result
+                  ? result.status === 'passed' ? 'bg-emerald-400'
+                    : result.status === 'failed' ? 'bg-red-400'
+                    : 'bg-amber-400'
+                  : 'bg-white/15'
 
               return (
                 <motion.li
@@ -223,12 +335,18 @@ export default function CatDetailPage() {
                   className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-white/5 transition-colors group/item"
                 >
                   {/* Status dot */}
-                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${statusColor}`} title={result?.status} />
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors duration-500 ${dotColor}`} />
 
                   {/* Scenario name */}
-                  <span className="text-sm text-white/70 flex-1 leading-snug">{scenario}</span>
+                  <span className={`text-sm flex-1 leading-snug transition-colors ${
+                    result?.status === 'failed' ? 'text-red-300/80' :
+                    result?.status === 'passed' ? 'text-white/70' :
+                    'text-white/50'
+                  }`}>
+                    {scenario}
+                  </span>
 
-                  {/* Duration if available */}
+                  {/* Duration */}
                   {result?.duration_ms != null && (
                     <span className="text-xs text-white/25 flex-shrink-0">
                       {(result.duration_ms / 1000).toFixed(1)}s
@@ -238,37 +356,33 @@ export default function CatDetailPage() {
                   {/* Trace link */}
                   {result?.trace_url && (
                     <a
-                      href={`https://trace.playwright.dev/?trace=${encodeURIComponent(result.trace_url)}`}
+                      href={traceViewerUrl(result.trace_url)}
                       target="_blank"
                       rel="noreferrer"
                       title="Open Trace Viewer"
                       className="opacity-0 group-hover/item:opacity-100 flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-brand-600/15 hover:bg-brand-600/30 text-brand-400 hover:text-white text-xs transition-all"
                     >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M15 10l4.553-2.069A1 1 0 0121 8.882v6.236a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
-                      </svg>
+                      <TraceIcon />
                       Trace
                     </a>
                   )}
 
-                  {/* Error indicator */}
+                  {/* Error message inline */}
                   {result?.status === 'failed' && result.error_message && (
-                    <Link
-                      href={`/dashboard/runs/${latestRun?.id}`}
-                      className="opacity-0 group-hover/item:opacity-100 text-xs text-red-400/70 hover:text-red-400 flex-shrink-0"
+                    <span
                       title={result.error_message}
+                      className="opacity-0 group-hover/item:opacity-100 flex-shrink-0 text-xs text-red-400/70 cursor-help max-w-[140px] truncate"
                     >
-                      ver erro
-                    </Link>
+                      {result.error_message.split('\n')[0]}
+                    </span>
                   )}
 
-                  {/* Play button for individual scenario */}
+                  {/* Play button */}
                   <button
                     onClick={() => openRunScenario(scenario)}
-                    disabled={triggering}
+                    disabled={triggering || isRunning}
                     title={`Run only: ${scenario}`}
-                    className="opacity-0 group-hover/item:opacity-100 w-6 h-6 flex items-center justify-center rounded-md bg-brand-600/20 hover:bg-brand-600/40 text-brand-400 hover:text-white transition-all duration-150 disabled:cursor-not-allowed flex-shrink-0"
+                    className="opacity-0 group-hover/item:opacity-100 w-6 h-6 flex items-center justify-center rounded-md bg-brand-600/20 hover:bg-brand-600/40 text-brand-400 hover:text-white transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-30 flex-shrink-0"
                   >
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M8 5v14l11-7z" />
@@ -279,6 +393,43 @@ export default function CatDetailPage() {
             })}
           </ul>
         )}
+
+        {/* Inline error detail for failed scenarios */}
+        <AnimatePresence>
+          {runDone && activeResults && activeResults.filter(r => r.status === 'failed').length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 pt-4 border-t border-white/5 space-y-3"
+            >
+              <p className="text-xs font-semibold text-red-400 uppercase tracking-wider">Failure Details</p>
+              {activeResults.filter(r => r.status === 'failed').map(r => (
+                <div key={r.id} className="rounded-lg bg-red-400/5 border border-red-500/15 p-3">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <span className="text-xs font-medium text-white/80">{r.scenario_name}</span>
+                    {r.trace_url && (
+                      <a
+                        href={traceViewerUrl(r.trace_url)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-brand-600/20 hover:bg-brand-600/40 text-brand-400 hover:text-white text-xs transition-all"
+                      >
+                        <TraceIcon />
+                        Open Trace
+                      </a>
+                    )}
+                  </div>
+                  {r.error_message && (
+                    <pre className="text-xs text-red-400/70 whitespace-pre-wrap font-mono leading-relaxed max-h-32 overflow-y-auto">
+                      {r.error_message}
+                    </pre>
+                  )}
+                </div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <AnimatePresence>
@@ -300,6 +451,15 @@ function PlayIcon() {
   return (
     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
       <path d="M8 5v14l11-7z" />
+    </svg>
+  )
+}
+
+function TraceIcon() {
+  return (
+    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M15 10l4.553-2.069A1 1 0 0121 8.882v6.236a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
     </svg>
   )
 }
