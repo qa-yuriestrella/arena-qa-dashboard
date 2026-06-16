@@ -65,7 +65,7 @@ export function RunHistoryPanel({ runs }: Props) {
                       href={`/dashboard/runs/${run.id}`}
                       className="text-xs text-brand-500 hover:text-brand-400 transition-colors"
                     >
-                      Details →
+                      Details
                     </Link>
                   </td>
                 </tr>
