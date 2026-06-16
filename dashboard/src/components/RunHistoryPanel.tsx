@@ -50,7 +50,14 @@ export function RunHistoryPanel({ runs }: Props) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
-                      {passRate !== null && <ProgressRing percentage={passRate} size={32} />}
+                      {passRate !== null && (
+                        <>
+                          <span className="text-xs font-semibold" style={{ color: passRate >= 80 ? '#10b981' : passRate >= 50 ? '#f59e0b' : '#ef4444' }}>
+                            {passRate}%
+                          </span>
+                          <ProgressRing percentage={passRate} size={24} showText={false} />
+                        </>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right">
