@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'framer-motion'
+import Link from 'next/link'
 import { CATS } from '@/lib/cats'
 import type { TestRun, CatInfo } from '@/types'
 import { CatCard } from '@/components/CatCard'
@@ -200,6 +201,13 @@ export default function DashboardPage() {
                 </div>
               ))}
 
+              <Link
+                href={`/dashboard/runs/${latestRun.id}`}
+                className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-white/60 hover:text-white hover:border-white/20 transition-all"
+              >
+                Ver Detalhes
+              </Link>
+
               {latestRun.github_run_url && (
                 <a
                   href={latestRun.github_run_url}
@@ -207,7 +215,7 @@ export default function DashboardPage() {
                   rel="noreferrer"
                   className="text-xs text-brand-500 hover:text-brand-400 underline"
                 >
-                  View on GitHub ↗
+                  GitHub ↗
                 </a>
               )}
             </div>

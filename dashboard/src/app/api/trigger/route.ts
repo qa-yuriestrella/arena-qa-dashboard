@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { cats, triggeredBy } = await req.json()
+  const { cats, triggeredBy, scenarioGrep } = await req.json()
   if (!cats) return NextResponse.json({ error: 'cats is required' }, { status: 400 })
 
   const { data: run, error } = await supabase
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   const triggeredAt = new Date()
 
   try {
-    await triggerWorkflow(cats, run.id, triggeredBy || session.user?.email || '')
+    await triggerWorkflow(cats, run.id, triggeredBy || session.user?.email || '', scenarioGrep)
   } catch (e: any) {
     await supabase.from('test_runs').update({ status: 'error' }).eq('id', run.id)
     return NextResponse.json({ error: e.message }, { status: 500 })

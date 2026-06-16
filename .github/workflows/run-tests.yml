@@ -13,6 +13,9 @@ on:
       triggered_by:
         description: 'Email do usuário que disparou o teste'
         required: false
+      scenario_grep:
+        description: 'Grep pattern to run a single scenario (optional)'
+        required: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -57,8 +60,13 @@ jobs:
           FACEBOOK_PASSWORD: ${{ secrets.FACEBOOK_PASSWORD }}
         run: |
           CATS="${{ inputs.cats }}"
+          GREP="${{ inputs.scenario_grep }}"
+          GREP_FLAG=""
+          if [ -n "$GREP" ]; then
+            GREP_FLAG="--grep $(printf '%q' "$GREP")"
+          fi
           if [ "$CATS" = "all" ]; then
-            npx playwright test || true
+            npx playwright test $GREP_FLAG || true
           else
             FILES=""
             IFS=',' read -ra CAT_LIST <<< "$CATS"
@@ -73,7 +81,7 @@ jobs:
               echo "No matching spec files found for: $CATS"
               exit 0
             fi
-            npx playwright test $FILES || true
+            npx playwright test $FILES $GREP_FLAG || true
           fi
 
       - name: Save results to Supabase

@@ -10,13 +10,18 @@ const OWNER = () => process.env.GITHUB_REPO_OWNER || 'stationfy'
 const REPO = () => process.env.GITHUB_REPO_NAME || 'arena-qa'
 const WORKFLOW_ID = () => process.env.GITHUB_WORKFLOW_ID || 'run-tests.yml'
 
-export async function triggerWorkflow(cats: string, runId: string, triggeredBy: string) {
+export async function triggerWorkflow(cats: string, runId: string, triggeredBy: string, scenarioGrep?: string) {
   await getOctokit().actions.createWorkflowDispatch({
     owner: OWNER(),
     repo: REPO(),
     workflow_id: WORKFLOW_ID(),
     ref: 'main',
-    inputs: { cats, run_id: runId, triggered_by: triggeredBy },
+    inputs: {
+      cats,
+      run_id: runId,
+      triggered_by: triggeredBy,
+      ...(scenarioGrep ? { scenario_grep: scenarioGrep } : {}),
+    },
   })
 }
 
