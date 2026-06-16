@@ -142,7 +142,7 @@ export default function CatDetailPage() {
               href={`/dashboard/runs/${latestRun.id}`}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white/60 hover:text-white hover:border-white/20 text-sm transition-all"
             >
-              Ver Detalhes
+              View Details
             </Link>
           )}
           <button
@@ -151,9 +151,9 @@ export default function CatDetailPage() {
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-brand rounded-xl text-white text-sm font-semibold shadow-lg shadow-brand-600/30 hover:shadow-brand-600/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {triggering ? (
-              <><span className="w-2 h-2 rounded-full bg-white animate-pulse" />Disparando...</>
+              <><span className="w-2 h-2 rounded-full bg-white animate-pulse" />Triggering...</>
             ) : (
-              <><PlayIcon />Rodar {cat.id}</>
+              <><PlayIcon />Run {cat.id}</>
             )}
           </button>
         </div>
@@ -176,17 +176,17 @@ export default function CatDetailPage() {
       {/* Last run summary for this CAT */}
       {hasResults && latestRun && (
         <div className="glass rounded-xl p-4 flex items-center gap-6">
-          <div className="text-xs text-white/40 uppercase tracking-wider">Último run</div>
+          <div className="text-xs text-white/40 uppercase tracking-wider">Latest Run</div>
           <div className="flex items-center gap-4">
-            <span className="text-emerald-400 font-semibold text-sm">{passCount} passaram</span>
-            {failCount > 0 && <span className="text-red-400 font-semibold text-sm">{failCount} falharam</span>}
+            <span className="text-emerald-400 font-semibold text-sm">{passCount} passed</span>
+            {failCount > 0 && <span className="text-red-400 font-semibold text-sm">{failCount} failed</span>}
             <span className="text-white/30 text-xs">{new Date(latestRun.created_at).toLocaleString('pt-BR')}</span>
           </div>
           <Link
             href={`/dashboard/runs/${latestRun.id}`}
             className="ml-auto text-xs text-brand-500 hover:text-brand-400 transition-colors"
           >
-            Ver erros →
+            View errors →
           </Link>
         </div>
       )}
@@ -195,15 +195,15 @@ export default function CatDetailPage() {
       <div className="glass rounded-2xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider">
-            Cenários de Teste
+            Test Scenarios
           </h2>
           <span className="text-xs text-white/30">
-            {cat.scenarios.length} cenários
+            {cat.scenarios.length} scenarios
           </span>
         </div>
 
         {cat.scenarios.length === 0 ? (
-          <p className="text-sm text-white/30 py-4 text-center">Nenhum cenário mapeado ainda.</p>
+          <p className="text-sm text-white/30 py-4 text-center">No scenarios mapped yet.</p>
         ) : (
           <ul className="space-y-1">
             {cat.scenarios.map((scenario, i) => {
@@ -241,7 +241,7 @@ export default function CatDetailPage() {
                       href={`https://trace.playwright.dev/?trace=${encodeURIComponent(result.trace_url)}`}
                       target="_blank"
                       rel="noreferrer"
-                      title="Abrir Trace Viewer"
+                      title="Open Trace Viewer"
                       className="opacity-0 group-hover/item:opacity-100 flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-brand-600/15 hover:bg-brand-600/30 text-brand-400 hover:text-white text-xs transition-all"
                     >
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -267,7 +267,7 @@ export default function CatDetailPage() {
                   <button
                     onClick={() => openRunScenario(scenario)}
                     disabled={triggering}
-                    title={`Rodar apenas: ${scenario}`}
+                    title={`Run only: ${scenario}`}
                     className="opacity-0 group-hover/item:opacity-100 w-6 h-6 flex items-center justify-center rounded-md bg-brand-600/20 hover:bg-brand-600/40 text-brand-400 hover:text-white transition-all duration-150 disabled:cursor-not-allowed flex-shrink-0"
                   >
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">

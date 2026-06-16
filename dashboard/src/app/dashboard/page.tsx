@@ -205,7 +205,7 @@ export default function DashboardPage() {
                 href={`/dashboard/runs/${latestRun.id}`}
                 className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-white/60 hover:text-white hover:border-white/20 transition-all"
               >
-                Ver Detalhes
+                View Details
               </Link>
 
               {latestRun.github_run_url && (

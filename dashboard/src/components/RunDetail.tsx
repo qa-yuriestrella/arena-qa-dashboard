@@ -150,7 +150,7 @@ export function RunDetail({ run, results }: Props) {
                         href={traceUrl(result.trace_url)}
                         target="_blank"
                         rel="noreferrer"
-                        title="Abrir Trace Viewer"
+                        title="Open Trace Viewer"
                         className="opacity-0 group-hover:opacity-100 flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-brand-600/15 hover:bg-brand-600/30 text-brand-400 hover:text-white text-xs transition-all"
                       >
                         <TraceIcon />
