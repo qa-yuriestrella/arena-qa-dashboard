@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { notFound } from 'next/navigation'
 import type { TestRun, TestResult } from '@/types'
 import { RunDetail } from '@/components/RunDetail'
@@ -10,21 +10,38 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
   const [results, setResults] = useState<TestResult[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  async function fetchRun() {
+    try {
+      const res = await fetch(`/api/runs/${params.id}`)
+      if (!res.ok) { setError(true); return null }
+      const data = await res.json()
+      setRun(data.run)
+      setResults(data.results || [])
+      setLoading(false)
+      return data.run as TestRun
+    } catch {
+      setError(true)
+      setLoading(false)
+      return null
+    }
+  }
 
   useEffect(() => {
-    fetch(`/api/runs/${params.id}`)
-      .then(res => {
-        if (!res.ok) { setError(true); return null }
-        return res.json()
-      })
-      .then(data => {
-        if (data) {
-          setRun(data.run)
-          setResults(data.results || [])
+    fetchRun().then(initialRun => {
+      if (!initialRun || initialRun.status !== 'running') return
+      pollingRef.current = setInterval(async () => {
+        const updated = await fetchRun()
+        if (updated?.status !== 'running') {
+          if (pollingRef.current) clearInterval(pollingRef.current)
         }
-        setLoading(false)
-      })
-      .catch(() => { setError(true); setLoading(false) })
+      }, 2000)
+    })
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current)
+    }
   }, [params.id])
 
   if (loading) {
