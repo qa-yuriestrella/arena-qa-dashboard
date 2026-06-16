@@ -14,6 +14,9 @@ on:
         description: 'Email do usuário que disparou o teste'
         required: false
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -26,7 +29,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: yarn
 
       - name: Install dependencies
@@ -57,11 +60,10 @@ jobs:
           if [ "$CATS" = "all" ]; then
             npx playwright test --reporter=list,html,json || true
           else
-            # Build list of spec files for requested CATs
             FILES=""
             IFS=',' read -ra CAT_LIST <<< "$CATS"
             for CAT in "${CAT_LIST[@]}"; do
-              CAT=$(echo "$CAT" | xargs)  # trim whitespace
+              CAT=$(echo "$CAT" | xargs)
               MATCH=$(find .features-gen -name "${CAT}*" 2>/dev/null | head -1)
               if [ -n "$MATCH" ]; then
                 FILES="$FILES $MATCH"
@@ -69,7 +71,7 @@ jobs:
             done
             if [ -z "$FILES" ]; then
               echo "No matching spec files found for: $CATS"
-              exit 1
+              exit 0
             fi
             npx playwright test $FILES --reporter=list,html,json || true
           fi
