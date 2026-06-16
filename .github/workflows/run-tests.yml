@@ -1,0 +1,100 @@
+name: Run Playwright Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      cats:
+        description: 'CATs to run (e.g. "CAT03,CAT04" or "all")'
+        required: true
+        default: all
+      run_id:
+        description: 'UUID do run criado no Supabase (para atualizar status)'
+        required: false
+      triggered_by:
+        description: 'Email do usuário que disparou o teste'
+        required: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Generate BDD test files
+        run: yarn bddgen
+
+      - name: Run tests
+        id: run_tests
+        env:
+          CI: true
+          BASE_URL: ${{ secrets.BASE_URL }}
+          TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+          EU_URL: ${{ secrets.EU_URL }}
+          MODERN_EU_URL: ${{ secrets.MODERN_EU_URL }}
+          GOOGLE_EMAIL: ${{ secrets.GOOGLE_EMAIL }}
+          GOOGLE_PASSWORD: ${{ secrets.GOOGLE_PASSWORD }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          FACEBOOK_PHONE: ${{ secrets.FACEBOOK_PHONE }}
+          FACEBOOK_PASSWORD: ${{ secrets.FACEBOOK_PASSWORD }}
+        run: |
+          CATS="${{ inputs.cats }}"
+          if [ "$CATS" = "all" ]; then
+            npx playwright test --reporter=list,html,json || true
+          else
+            # Build list of spec files for requested CATs
+            FILES=""
+            IFS=',' read -ra CAT_LIST <<< "$CATS"
+            for CAT in "${CAT_LIST[@]}"; do
+              CAT=$(echo "$CAT" | xargs)  # trim whitespace
+              MATCH=$(find .features-gen -name "${CAT}*" 2>/dev/null | head -1)
+              if [ -n "$MATCH" ]; then
+                FILES="$FILES $MATCH"
+              fi
+            done
+            if [ -z "$FILES" ]; then
+              echo "No matching spec files found for: $CATS"
+              exit 1
+            fi
+            npx playwright test $FILES --reporter=list,html,json || true
+          fi
+
+      - name: Save results to Supabase
+        if: always() && inputs.run_id != ''
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          RUN_ID: ${{ inputs.run_id }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/save-results.js
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload test results (videos/screenshots)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ github.run_id }}
+          path: test-results/
+          retention-days: 30

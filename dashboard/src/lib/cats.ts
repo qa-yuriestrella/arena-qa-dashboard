@@ -1,0 +1,27 @@
+import type { CatInfo } from '@/types'
+
+export const CATS: CatInfo[] = [
+  { id: 'CAT03', name: 'Login', tag: 'login', description: 'User authentication flows', active: true },
+  { id: 'CAT04', name: 'Avatar Management', tag: 'avatar-management', description: 'Create and manage avatars', active: true },
+  { id: 'CAT05', name: 'Home', tag: 'home', description: 'Home page features', active: true },
+  { id: 'CAT06', name: 'Knowledge Base', tag: 'knowledge-base', description: 'KB creation and management', active: true },
+  { id: 'CAT07', name: 'EU Authentication', tag: 'end-user-auth', description: 'End-user auth flows', active: true },
+  { id: 'CAT08', name: 'End User', tag: 'end-user', description: 'End-user experience', active: true },
+  { id: 'CAT09', name: 'Chat Log', tag: 'chat-log', description: 'Chat history and logs', active: true },
+  { id: 'CAT10', name: 'Video AI', tag: 'video-ai', description: 'Video AI generation', active: true },
+  { id: 'CAT11', name: 'Profile Builder (General)', tag: 'profile-builder-general', description: 'General profile settings', active: true },
+  { id: 'CAT12', name: 'Profile Builder (Headshot)', tag: 'profile-builder-headshot', description: 'Headshot upload and management', active: true },
+  { id: 'CAT13', name: 'Profile Builder (Social)', tag: 'profile-builder-social', description: 'Social links configuration', active: true },
+  { id: 'CAT14', name: 'Profile Builder (Visual)', tag: 'profile-builder-visual', description: 'Visual customization', active: true },
+  { id: 'CAT15', name: 'Sections (URL/Media)', tag: 'profile-builder-sections', description: 'URL and media sections', active: true },
+  { id: 'CAT16', name: 'Sections (Digital Product)', tag: 'sections-digital-product', description: 'Digital product sections', active: true },
+  { id: 'CAT17', name: 'EU Sections', tag: 'eu-sections', description: 'End-user sections display', active: true },
+  { id: 'CAT19', name: 'Audience', tag: 'audience', description: 'Audience management', active: true },
+  { id: 'CAT20', name: 'Settings Team', tag: 'settings-team', description: 'Team member settings', active: true },
+  { id: 'CAT21', name: 'Settings Membership', tag: 'settings-membership-payments', description: 'Membership and payments', active: true },
+  { id: 'CAT22', name: 'Settings Billing', tag: 'settings-billing', description: 'Billing configuration', active: true },
+  { id: 'CAT23', name: 'Health Check', tag: 'health-check', description: 'System health validation', active: true },
+  { id: 'CAT01', name: 'Signup', tag: 'signup', description: 'New user registration (WIP)', active: false },
+  { id: 'CAT02', name: 'Onboarding', tag: 'onboarding', description: 'User onboarding flow (WIP)', active: false },
+  { id: 'CAT18', name: 'Income', tag: 'income', description: 'Income tracking (WIP)', active: false },
+]

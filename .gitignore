@@ -3,3 +3,11 @@ playwright-report/
 test-results/
 .features-gen/
 .claude/
+
+# Dashboard
+dashboard/.next/
+dashboard/.env.local
+dashboard/node_modules/
+
+# Screenshots exploratórios
+scripts/*.png

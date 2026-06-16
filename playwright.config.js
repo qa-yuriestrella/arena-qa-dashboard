@@ -35,6 +35,7 @@ module.exports = defineConfig({
   reporter: [
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
+    ['json', { outputFile: 'test-results/results.json' }],
   ],
 
   use: {
@@ -42,12 +43,10 @@ module.exports = defineConfig({
     baseURL: process.env.BASE_URL || 'https://stg-dash-avatar.arena.im',
 
     // Mostrar o browser durante os testes (false = mais rápido, true = debug visual)
-    headless: false,
+    headless: !!process.env.CI,
 
-    // Deixar um pouco mais lento para conseguir acompanhar visualmente
-    // Remover ou colocar 0 para velocidade normal
     launchOptions: {
-      slowMo: 300,
+      slowMo: process.env.CI ? 0 : 300,
     },
 
     // Captura automática em caso de falha
@@ -66,7 +65,7 @@ module.exports = defineConfig({
         ...devices['Desktop Chrome'],
         permissions: ['microphone'],
         launchOptions: {
-          slowMo: 300,
+          slowMo: process.env.CI ? 0 : 300,
           args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'],
         },
       },
