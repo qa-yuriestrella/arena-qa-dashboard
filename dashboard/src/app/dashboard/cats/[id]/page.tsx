@@ -9,6 +9,7 @@ import { CATS } from '@/lib/cats'
 import { RunModal } from '@/components/RunModal'
 import { StatusBadge } from '@/components/StatusBadge'
 import type { TestRun, TestResult } from '@/types'
+import { formatDuration, runDurationMs } from '@/lib/utils'
 
 function traceViewerUrl(url: string) {
   return `https://trace.playwright.dev/?trace=${encodeURIComponent(url)}`
@@ -157,6 +158,15 @@ export default function CatDetailPage() {
   const isRunning = activeRun?.status === 'running'
   const runDone = activeRun && activeRun.status !== 'running'
 
+  // Live elapsed timer
+  const [elapsedMs, setElapsedMs] = useState(0)
+  useEffect(() => {
+    if (!isRunning || !activeRun?.created_at) { setElapsedMs(0); return }
+    setElapsedMs(Date.now() - new Date(activeRun.created_at).getTime())
+    const id = setInterval(() => setElapsedMs(Date.now() - new Date(activeRun.created_at).getTime()), 1000)
+    return () => clearInterval(id)
+  }, [isRunning, activeRun?.created_at])
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -253,7 +263,10 @@ export default function CatDetailPage() {
               <div className="flex-1 min-w-0">
                 {isRunning ? (
                   <>
-                    <p className="text-sm font-medium text-white">Running tests on GitHub Actions...</p>
+                    <div className="flex items-center gap-3">
+                      <p className="text-sm font-medium text-white">Running tests on GitHub Actions...</p>
+                      <span className="text-sm font-mono text-brand-400 tabular-nums">{formatDuration(elapsedMs)}</span>
+                    </div>
                     {activeRun.current_scenario ? (
                       <p className="text-xs text-brand-400/80 mt-0.5 font-mono">
                         Scenario {activeRun.current_scenario}
@@ -266,15 +279,18 @@ export default function CatDetailPage() {
                   </>
                 ) : (
                   <>
-                    <p className={`text-sm font-medium ${
-                      activeRun.status === 'passed' ? 'text-emerald-400' :
-                      activeRun.status === 'failed' ? 'text-red-400' : 'text-white/60'
-                    }`}>
-                      {activeRun.status === 'passed' ? 'All scenarios passed' :
-                       activeRun.status === 'failed' ? `${activeRun.failed_tests} scenario${activeRun.failed_tests !== 1 ? 's' : ''} failed` :
-                       activeRun.status === 'error' ? 'Run error — check details' :
-                       'Run cancelled'}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <p className={`text-sm font-medium ${
+                        activeRun.status === 'passed' ? 'text-emerald-400' :
+                        activeRun.status === 'failed' ? 'text-red-400' : 'text-white/60'
+                      }`}>
+                        {activeRun.status === 'passed' ? 'All scenarios passed' :
+                         activeRun.status === 'failed' ? `${activeRun.failed_tests} scenario${activeRun.failed_tests !== 1 ? 's' : ''} failed` :
+                         activeRun.status === 'error' ? 'Run error — check details' :
+                         'Run cancelled'}
+                      </p>
+                      {(() => { const d = runDurationMs(activeRun); return d != null ? <span className="text-xs text-white/35 tabular-nums">{formatDuration(d)}</span> : null })()}
+                    </div>
                     {activeRun.total_tests > 0 && (
                       <p className="text-xs text-white/40 mt-0.5">
                         {activeRun.passed_tests} passed · {activeRun.failed_tests} failed · {activeRun.skipped_tests} skipped
