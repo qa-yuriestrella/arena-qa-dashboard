@@ -36,6 +36,7 @@ module.exports = defineConfig({
     ['list'],
     ['html', { outputFolder: 'playwright-report', open: 'never' }],
     ['json', { outputFile: 'test-results/results.json' }],
+    ...(process.env.RUN_ID ? [['./scripts/supabase-reporter.js']] : []),
   ],
 
   use: {

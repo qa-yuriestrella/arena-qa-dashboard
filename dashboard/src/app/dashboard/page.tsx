@@ -180,8 +180,16 @@ export default function DashboardPage() {
                   {latestRun.cats === 'all' ? 'All tests' : latestRun.cats} ·{' '}
                   {new Date(latestRun.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}
                 </p>
-                {isRunning && !latestRun.github_run_id && (
+                {isRunning && latestRun.current_scenario && (
+                  <p className="text-xs text-brand-400/80 mt-1 font-mono truncate">
+                    Cenário {latestRun.current_scenario}
+                  </p>
+                )}
+                {isRunning && !latestRun.current_scenario && !latestRun.github_run_id && (
                   <p className="text-xs text-white/30 mt-1">Waiting for GitHub to start workflow...</p>
+                )}
+                {isRunning && !latestRun.current_scenario && latestRun.github_run_id && (
+                  <p className="text-xs text-white/30 mt-1">Starting tests...</p>
                 )}
                 {latestRun.status === 'error' && latestRun.failure_reason && (
                   <p className="text-xs text-red-400/70 mt-1 max-w-xs">{latestRun.failure_reason}</p>

@@ -13,6 +13,7 @@ export interface TestRun {
   completed_at: string | null
   duration_ms: number | null
   failure_reason: string | null
+  current_scenario: string | null
 }
 
 export interface TestResult {

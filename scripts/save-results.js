@@ -73,10 +73,42 @@ async function main() {
     process.exit(0);
   }
 
+  // If the supabase-reporter already saved results, just clean up and exit.
+  const existing = await supabaseFetch(`test_results?run_id=eq.${RUN_ID}&select=id,status`).catch(() => []);
+  if (existing.length > 0) {
+    console.log(`Reporter already saved ${existing.length} results — skipping full save.`);
+    // Clear progress label and ensure github_run_url is set (reporter may not have finished onEnd if cancelled)
+    const runs = await supabaseFetch(`test_runs?id=eq.${RUN_ID}&select=status`).catch(() => []);
+    if (runs[0]?.status === 'running') {
+      const passed = existing.filter(r => r.status === 'passed').length;
+      const failed = existing.filter(r => r.status === 'failed').length;
+      const skipped = existing.filter(r => r.status === 'skipped').length;
+      await supabaseFetch(`test_runs?id=eq.${RUN_ID}`, 'PATCH', {
+        status: failed > 0 ? 'failed' : passed > 0 ? 'passed' : 'error',
+        total_tests: existing.length,
+        passed_tests: passed,
+        failed_tests: failed,
+        skipped_tests: skipped,
+        current_scenario: null,
+        completed_at: new Date().toISOString(),
+        github_run_url: GITHUB_RUN_URL,
+      });
+      console.log(`Updated run status from partial results: ${failed > 0 ? 'failed' : 'passed'}`);
+    } else {
+      // Run already finalized by reporter, just ensure label is cleared
+      await supabaseFetch(`test_runs?id=eq.${RUN_ID}`, 'PATCH', {
+        current_scenario: null,
+        github_run_url: GITHUB_RUN_URL,
+      }).catch(() => {});
+    }
+    process.exit(0);
+  }
+
   if (!fs.existsSync(RESULTS_FILE)) {
     console.error('results.json not found at', RESULTS_FILE);
     await supabaseFetch(`test_runs?id=eq.${RUN_ID}`, 'PATCH', {
       status: 'error',
+      current_scenario: null,
       completed_at: new Date().toISOString(),
       failure_reason: 'Test results file not found — tests may not have run. Check the GitHub Actions log.',
     });
@@ -158,6 +190,7 @@ async function main() {
     passed_tests: passed,
     failed_tests: failed,
     skipped_tests: skipped,
+    current_scenario: null,
     completed_at: new Date().toISOString(),
     github_run_url: GITHUB_RUN_URL,
   });

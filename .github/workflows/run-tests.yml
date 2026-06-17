@@ -78,6 +78,10 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           FACEBOOK_PHONE: ${{ secrets.FACEBOOK_PHONE }}
           FACEBOOK_PASSWORD: ${{ secrets.FACEBOOK_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          RUN_ID: ${{ inputs.run_id }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           CATS="${{ inputs.cats }}"
           GREP="${{ inputs.scenario_grep }}"
