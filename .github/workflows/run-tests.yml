@@ -67,9 +67,9 @@ jobs:
       - name: Restore social auth files
         run: |
           mkdir -p .auth
-          echo "${{ secrets.AUTH_GOOGLE_EU }}" | base64 -d > .auth/google-eu.json
-          echo "${{ secrets.AUTH_GOOGLE_EU_MODERN }}" | base64 -d > .auth/google-eu-modern.json
-          echo "${{ secrets.AUTH_GOOGLE_ADMIN }}" | base64 -d > .auth/google-admin.json
+          echo "${{ secrets.AUTH_GOOGLE_EU }}" | tr -d '[:space:]' | base64 -d > .auth/google-eu.json
+          echo "${{ secrets.AUTH_GOOGLE_EU_MODERN }}" | tr -d '[:space:]' | base64 -d > .auth/google-eu-modern.json
+          echo "${{ secrets.AUTH_GOOGLE_ADMIN }}" | tr -d '[:space:]' | base64 -d > .auth/google-admin.json
 
       - name: Run tests
         id: run_tests
