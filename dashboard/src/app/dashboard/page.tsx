@@ -182,7 +182,7 @@ export default function DashboardPage() {
                 </p>
                 {isRunning && latestRun.current_scenario && (
                   <p className="text-xs text-brand-400/80 mt-1 font-mono truncate">
-                    Cenário {latestRun.current_scenario}
+                    Scenario {latestRun.current_scenario}
                   </p>
                 )}
                 {isRunning && !latestRun.current_scenario && !latestRun.github_run_id && (

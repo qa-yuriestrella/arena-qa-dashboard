@@ -256,7 +256,7 @@ export default function CatDetailPage() {
                     <p className="text-sm font-medium text-white">Running tests on GitHub Actions...</p>
                     {activeRun.current_scenario ? (
                       <p className="text-xs text-brand-400/80 mt-0.5 font-mono">
-                        Cenário {activeRun.current_scenario}
+                        Scenario {activeRun.current_scenario}
                       </p>
                     ) : !activeRun.github_run_id ? (
                       <p className="text-xs text-white/30 mt-0.5">Waiting for workflow to start</p>
