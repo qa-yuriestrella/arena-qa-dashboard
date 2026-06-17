@@ -14,6 +14,10 @@ function traceViewerUrl(url: string) {
   return `https://trace.playwright.dev/?trace=${encodeURIComponent(url)}`
 }
 
+function isValidUrl(url: string): boolean {
+  try { new URL(url); return true } catch { return false }
+}
+
 export default function CatDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
@@ -285,7 +289,7 @@ export default function CatDetailPage() {
                     rel="noreferrer"
                     className="text-xs text-brand-500 hover:text-brand-400 transition-colors"
                   >
-                    GitHub ↗
+                    GitHub
                   </a>
                 )}
                 <Link
@@ -361,7 +365,7 @@ export default function CatDetailPage() {
                   )}
 
                   {/* Trace link */}
-                  {result?.trace_url && (
+                  {result?.trace_url && isValidUrl(result.trace_url) && (
                     <a
                       href={traceViewerUrl(result.trace_url)}
                       target="_blank"
@@ -415,7 +419,7 @@ export default function CatDetailPage() {
                 <div key={r.id} className="rounded-lg bg-red-400/5 border border-red-500/15 p-3">
                   <div className="flex items-center justify-between gap-3 mb-2">
                     <span className="text-xs font-medium text-white/80">{r.scenario_name}</span>
-                    {r.trace_url && (
+                    {r.trace_url && isValidUrl(r.trace_url) && (
                       <a
                         href={traceViewerUrl(r.trace_url)}
                         target="_blank"

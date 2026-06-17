@@ -136,7 +136,7 @@ export default function DashboardPage() {
               ) : (
                 <StopIcon />
               )}
-              {cancelling ? 'Cancelling...' : latestRun?.github_run_id ? 'Cancel Run' : 'Force Stop'}
+              {cancelling ? 'Cancelling...' : 'Stop Run'}
             </button>
           )}
           <button
@@ -178,7 +178,7 @@ export default function DashboardPage() {
                 </div>
                 <p className="text-sm text-white/60">
                   {latestRun.cats === 'all' ? 'All tests' : latestRun.cats} ·{' '}
-                  {new Date(latestRun.created_at).toLocaleString('pt-BR')}
+                  {new Date(latestRun.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}
                 </p>
                 {isRunning && !latestRun.github_run_id && (
                   <p className="text-xs text-white/30 mt-1">Waiting for GitHub to start workflow...</p>
@@ -215,7 +215,7 @@ export default function DashboardPage() {
                   rel="noreferrer"
                   className="text-xs text-brand-500 hover:text-brand-400 underline"
                 >
-                  GitHub ↗
+                  GitHub
                 </a>
               )}
             </div>

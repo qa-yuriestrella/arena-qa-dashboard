@@ -1,11 +1,15 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { notFound } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import type { TestRun, TestResult } from '@/types'
 import { RunDetail } from '@/components/RunDetail'
 
 export default function RunDetailPage({ params }: { params: { id: string } }) {
+  const { data: session } = useSession()
+  const router = useRouter()
   const [run, setRun] = useState<TestRun | null>(null)
   const [results, setResults] = useState<TestResult[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,5 +58,15 @@ export default function RunDetailPage({ params }: { params: { id: string } }) {
 
   if (error || !run) return notFound()
 
-  return <RunDetail run={run} results={results} />
+  async function rerunRun() {
+    if (!run) return
+    await fetch('/api/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cats: run.cats, triggeredBy: session?.user?.email }),
+    })
+    router.push('/dashboard')
+  }
+
+  return <RunDetail run={run} results={results} onRerun={rerunRun} />
 }

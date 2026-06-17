@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
-const STALE_MINUTES = 30
+const STALE_MINUTES = 5
 
 export async function GET() {
   const session = await getServerSession(authOptions)

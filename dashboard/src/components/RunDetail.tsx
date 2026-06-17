@@ -8,13 +8,18 @@ import { ProgressRing } from './ProgressRing'
 interface Props {
   run: TestRun
   results: TestResult[]
+  onRerun?: () => void
 }
 
 function traceUrl(url: string) {
   return `https://trace.playwright.dev/?trace=${encodeURIComponent(url)}`
 }
 
-export function RunDetail({ run, results }: Props) {
+function isValidUrl(url: string): boolean {
+  try { new URL(url); return true } catch { return false }
+}
+
+export function RunDetail({ run, results, onRerun }: Props) {
   const passRate = run.total_tests > 0
     ? Math.round((run.passed_tests / run.total_tests) * 100)
     : null
@@ -46,7 +51,7 @@ export function RunDetail({ run, results }: Props) {
                 <StatusBadge status={run.status} />
               </div>
               <p className="text-white font-semibold">{run.cats === 'all' ? 'Full Test Run' : run.cats}</p>
-              <p className="text-xs text-white/40">{new Date(run.created_at).toLocaleString('pt-BR')}</p>
+              <p className="text-xs text-white/40">{new Date(run.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}</p>
               {run.status === 'error' && run.failure_reason && (
                 <p className="text-xs text-red-400/70 mt-1 max-w-sm">{run.failure_reason}</p>
               )}
@@ -68,12 +73,23 @@ export function RunDetail({ run, results }: Props) {
           </div>
         </div>
 
-        {run.github_run_url && (
-          <div className="mt-4 pt-4 border-t border-white/5">
-            <a href={run.github_run_url} target="_blank" rel="noreferrer"
-              className="text-xs text-brand-500 hover:text-brand-400 underline">
-              View on GitHub Actions ↗
-            </a>
+        {(run.github_run_url || (onRerun && run.status !== 'running')) && (
+          <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-4">
+            {run.github_run_url && (
+              <a href={run.github_run_url} target="_blank" rel="noreferrer"
+                className="text-xs text-brand-500 hover:text-brand-400 underline">
+                View on GitHub Actions
+              </a>
+            )}
+            {onRerun && run.status !== 'running' && (
+              <button
+                onClick={onRerun}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-600/20 hover:bg-brand-600/40 text-brand-400 hover:text-white text-xs font-medium transition-all"
+              >
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                Run Again
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -92,7 +108,7 @@ export function RunDetail({ run, results }: Props) {
                     <span className="text-xs font-mono text-brand-500 bg-brand-600/10 px-1.5 py-0.5 rounded">{result.cat}</span>
                     <span className="text-sm font-medium text-white">{result.scenario_name}</span>
                   </div>
-                  {result.trace_url && (
+                  {result.trace_url && isValidUrl(result.trace_url) && (
                     <a
                       href={traceUrl(result.trace_url)}
                       target="_blank"
@@ -150,7 +166,7 @@ export function RunDetail({ run, results }: Props) {
                     }`} />
                     <span className="text-xs text-white/70 flex-1">{result.scenario_name}</span>
                     <span className="text-xs text-white/25 flex-shrink-0">{(result.duration_ms / 1000).toFixed(1)}s</span>
-                    {result.trace_url && (
+                    {result.trace_url && isValidUrl(result.trace_url) && (
                       <a
                         href={traceUrl(result.trace_url)}
                         target="_blank"

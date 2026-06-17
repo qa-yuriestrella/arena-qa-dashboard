@@ -37,10 +37,17 @@ export function RunHistoryPanel({ runs }: Props) {
               return (
                 <tr key={run.id} className="border-b border-white/5 last:border-0 hover:bg-white/2 transition-colors">
                   <td className="px-4 py-3 text-white/60 text-xs">
-                    {new Date(run.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    {new Date(run.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}
                   </td>
-                  <td className="px-4 py-3 text-white/80 text-xs font-mono">
-                    {run.cats === 'all' ? 'All' : run.cats}
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {run.cats === 'all'
+                        ? <span className="text-xs font-mono bg-brand-600/15 text-brand-400 px-1.5 py-0.5 rounded">All</span>
+                        : run.cats.split(',').map(cat => (
+                            <span key={cat} className="text-xs font-mono bg-white/5 text-white/60 px-1.5 py-0.5 rounded">{cat.trim()}</span>
+                          ))
+                      }
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={run.status} />
