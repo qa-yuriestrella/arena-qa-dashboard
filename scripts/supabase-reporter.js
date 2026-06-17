@@ -99,7 +99,7 @@ class SupabaseReporter {
     )
   }
 
-  async onTestEnd(test, result) {
+  onTestEnd(test, result) {
     if (!RUN_ID) return
 
     // Only save on the final attempt
@@ -115,21 +115,26 @@ class SupabaseReporter {
     else if (status === 'failed') this._failed++
     else this._skipped++
 
-    const traceAtt = result.attachments?.find(a => a.name === 'trace')
-    const traceUrl = await uploadTrace(traceAtt?.path, test.title)
+    // Capture everything needed synchronously before returning,
+    // then push the async chain to _pending so onEnd can await it.
     const errorMsg = result.error?.message?.substring(0, 2000) || null
+    const traceAttPath = result.attachments?.find(a => a.name === 'trace')?.path || null
+    const cat = extractCat(test)
+    const scenarioName = test.title
+    const durationMs = result.duration || 0
 
-    this._fire(
-      supabaseFetch('test_results', 'POST', [{
+    this._pending.push((async () => {
+      const traceUrl = await uploadTrace(traceAttPath, scenarioName)
+      await supabaseFetch('test_results', 'POST', [{
         run_id: RUN_ID,
-        cat: extractCat(test),
-        scenario_name: test.title,
+        cat,
+        scenario_name: scenarioName,
         status,
-        duration_ms: result.duration || 0,
+        duration_ms: durationMs,
         error_message: errorMsg,
         trace_url: traceUrl,
-      }])
-    )
+      }]).catch(() => {})
+    })())
   }
 
   async onEnd() {
