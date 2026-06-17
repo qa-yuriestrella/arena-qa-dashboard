@@ -4,6 +4,8 @@ import Link from 'next/link'
 import type { TestRun, TestResult } from '@/types'
 import { StatusBadge } from './StatusBadge'
 import { ProgressRing } from './ProgressRing'
+import { CATS } from '@/lib/cats'
+import { formatDuration, runDurationMs } from '@/lib/utils'
 
 interface Props {
   run: TestRun
@@ -52,6 +54,7 @@ export function RunDetail({ run, results, onRerun }: Props) {
               </div>
               <p className="text-white font-semibold">{run.cats === 'all' ? 'Full Test Run' : run.cats}</p>
               <p className="text-xs text-white/40">{new Date(run.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}</p>
+              {(() => { const d = runDurationMs(run); return d != null ? <p className="text-xs text-white/30 mt-0.5">Duration: {formatDuration(d)}</p> : null })()}
               {run.status === 'error' && run.failure_reason && (
                 <p className="text-xs text-red-400/70 mt-1 max-w-sm">{run.failure_reason}</p>
               )}
@@ -101,11 +104,19 @@ export function RunDetail({ run, results, onRerun }: Props) {
             Failed Tests ({failed.length})
           </h2>
           <div className="space-y-3">
-            {failed.map(result => (
+            {[...failed]
+              .sort((a, b) => {
+                const catDiff = parseInt(a.cat.replace('CAT', ''), 10) - parseInt(b.cat.replace('CAT', ''), 10)
+                return catDiff !== 0 ? catDiff : a.scenario_name.localeCompare(b.scenario_name)
+              })
+              .map(result => {
+                const catInfo = CATS.find(c => c.id === result.cat)
+                return (
               <div key={result.id} className="glass rounded-xl p-4 border border-red-500/20">
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-mono text-brand-500 bg-brand-600/10 px-1.5 py-0.5 rounded">{result.cat}</span>
+                    {catInfo && <span className="text-xs text-white/50">{catInfo.name}</span>}
                     <span className="text-sm font-medium text-white">{result.scenario_name}</span>
                   </div>
                   {result.trace_url && isValidUrl(result.trace_url) && (
@@ -126,7 +137,8 @@ export function RunDetail({ run, results, onRerun }: Props) {
                   </pre>
                 )}
               </div>
-            ))}
+                )
+              })}
           </div>
         </div>
       )}
@@ -134,55 +146,66 @@ export function RunDetail({ run, results, onRerun }: Props) {
       {/* All results by CAT */}
       <div>
         <h2 className="text-sm font-semibold text-white/50 uppercase tracking-wider mb-4">All Results by Category</h2>
-        <div className="glass rounded-2xl overflow-hidden">
-          {Object.entries(byCat).sort(([a], [b]) => a.localeCompare(b)).map(([cat, catResults], i) => {
-            const catPass = catResults.filter(r => r.status === 'passed').length
-            const catFail = catResults.filter(r => r.status === 'failed').length
-            const catPassRate = catResults.length > 0 ? Math.round((catPass / catResults.length) * 100) : 0
+        <div className="space-y-3">
+          {Object.entries(byCat)
+            .sort(([a], [b]) => parseInt(a.replace('CAT', ''), 10) - parseInt(b.replace('CAT', ''), 10))
+            .map(([cat, catResults]) => {
+              const catInfo = CATS.find(c => c.id === cat)
+              const catPass = catResults.filter(r => r.status === 'passed').length
+              const catFail = catResults.filter(r => r.status === 'failed').length
+              const catPassRate = catResults.length > 0 ? Math.round((catPass / catResults.length) * 100) : 0
+              const sortedResults = [...catResults].sort((a, b) => a.scenario_name.localeCompare(b.scenario_name))
 
-            return (
-              <div key={cat} className={i > 0 ? 'border-t border-white/5' : ''}>
-                {/* CAT header */}
-                <div className="flex items-center gap-3 px-4 py-3 bg-white/2">
-                  <span className="text-xs font-mono text-brand-500 font-bold">{cat}</span>
-                  <span className="text-xs text-white/30">{catResults.length} tests</span>
-                  <div className="ml-auto flex items-center gap-3">
-                    <span className="text-xs text-emerald-400">{catPass} passed</span>
-                    {catFail > 0 && <span className="text-xs text-red-400">{catFail} failed</span>}
-                    <div className="flex items-center gap-1.5">
-                      <ProgressRing percentage={catPassRate} size={24} showText={false} />
-                      <span className="text-xs font-semibold" style={{ color: catPassRate >= 80 ? '#10b981' : catPassRate >= 50 ? '#f59e0b' : '#ef4444' }}>
-                        {catPassRate}%
-                      </span>
+              return (
+                <div key={cat} className="glass rounded-2xl overflow-hidden">
+                  {/* CAT header */}
+                  <div className="flex items-center gap-3 px-4 py-3 bg-white/2">
+                    <span className="text-xs font-mono text-brand-500 font-bold">{cat}</span>
+                    {catInfo && (
+                      <span className="text-xs font-medium text-white/70">{catInfo.name}</span>
+                    )}
+                    <span className="text-xs text-white/30">{catResults.length} tests</span>
+                    <div className="ml-auto flex items-center gap-3">
+                      <span className="text-xs text-emerald-400">{catPass} passed</span>
+                      {catFail > 0 && <span className="text-xs text-red-400">{catFail} failed</span>}
+                      <div className="flex items-center gap-1.5">
+                        <ProgressRing percentage={catPassRate} size={24} showText={false} />
+                        <span className="text-xs font-semibold" style={{ color: catPassRate >= 80 ? '#10b981' : catPassRate >= 50 ? '#f59e0b' : '#ef4444' }}>
+                          {catPassRate}%
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  {/* Scenarios */}
+                  {sortedResults.map(result => (
+                    <div key={result.id} className={`flex items-center gap-3 px-4 py-2.5 border-t border-white/3 group transition-colors ${
+                      result.status === 'failed' ? 'bg-red-500/8 hover:bg-red-500/12' : 'hover:bg-white/1'
+                    }`}>
+                      <span className={`flex-shrink-0 w-4 text-center leading-none ${
+                        result.status === 'passed' ? 'text-emerald-400' :
+                        result.status === 'failed' ? 'text-red-400' : 'text-amber-400'
+                      }`}>
+                        {result.status === 'passed' ? '✓' : result.status === 'failed' ? '✗' : '–'}
+                      </span>
+                      <span className="text-xs text-white/70 flex-1">{result.scenario_name}</span>
+                      <span className="text-xs text-white/25 flex-shrink-0">{(result.duration_ms / 1000).toFixed(1)}s</span>
+                      {result.trace_url && isValidUrl(result.trace_url) && (
+                        <a
+                          href={traceUrl(result.trace_url)}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Open Trace Viewer"
+                          className="opacity-0 group-hover:opacity-100 flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-brand-600/15 hover:bg-brand-600/30 text-brand-400 hover:text-white text-xs transition-all"
+                        >
+                          <TraceIcon />
+                          Trace
+                        </a>
+                      )}
+                    </div>
+                  ))}
                 </div>
-                {/* Scenarios */}
-                {catResults.map(result => (
-                  <div key={result.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/1 border-t border-white/3 group">
-                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                      result.status === 'passed' ? 'bg-emerald-400' :
-                      result.status === 'failed' ? 'bg-red-400' : 'bg-amber-400'
-                    }`} />
-                    <span className="text-xs text-white/70 flex-1">{result.scenario_name}</span>
-                    <span className="text-xs text-white/25 flex-shrink-0">{(result.duration_ms / 1000).toFixed(1)}s</span>
-                    {result.trace_url && isValidUrl(result.trace_url) && (
-                      <a
-                        href={traceUrl(result.trace_url)}
-                        target="_blank"
-                        rel="noreferrer"
-                        title="Open Trace Viewer"
-                        className="opacity-0 group-hover:opacity-100 flex-shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-brand-600/15 hover:bg-brand-600/30 text-brand-400 hover:text-white text-xs transition-all"
-                      >
-                        <TraceIcon />
-                        Trace
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )
-          })}
+              )
+            })}
         </div>
       </div>
     </div>

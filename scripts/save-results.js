@@ -73,6 +73,10 @@ async function main() {
     process.exit(0);
   }
 
+  // Fetch run metadata (created_at) to compute total duration later
+  const runMeta = await supabaseFetch(`test_runs?id=eq.${RUN_ID}&select=created_at`).catch(() => []);
+  const runCreatedAt = runMeta[0]?.created_at || null;
+
   // If the supabase-reporter already saved results, just clean up and exit.
   const existing = await supabaseFetch(`test_results?run_id=eq.${RUN_ID}&select=id,status`).catch(() => []);
   if (existing.length > 0) {
@@ -83,6 +87,7 @@ async function main() {
       const passed = existing.filter(r => r.status === 'passed').length;
       const failed = existing.filter(r => r.status === 'failed').length;
       const skipped = existing.filter(r => r.status === 'skipped').length;
+      const completedAt1 = new Date().toISOString();
       await supabaseFetch(`test_runs?id=eq.${RUN_ID}`, 'PATCH', {
         status: failed > 0 ? 'failed' : passed > 0 ? 'passed' : 'error',
         total_tests: existing.length,
@@ -90,7 +95,8 @@ async function main() {
         failed_tests: failed,
         skipped_tests: skipped,
         current_scenario: null,
-        completed_at: new Date().toISOString(),
+        completed_at: completedAt1,
+        duration_ms: runCreatedAt ? new Date(completedAt1).getTime() - new Date(runCreatedAt).getTime() : null,
         github_run_url: GITHUB_RUN_URL,
       });
       console.log(`Updated run status from partial results: ${failed > 0 ? 'failed' : 'passed'}`);
@@ -184,6 +190,7 @@ async function main() {
   }
 
   // Update the run record
+  const completedAt = new Date().toISOString();
   await supabaseFetch(`test_runs?id=eq.${RUN_ID}`, 'PATCH', {
     status: failed > 0 ? 'failed' : 'passed',
     total_tests: total,
@@ -191,7 +198,8 @@ async function main() {
     failed_tests: failed,
     skipped_tests: skipped,
     current_scenario: null,
-    completed_at: new Date().toISOString(),
+    completed_at: completedAt,
+    duration_ms: runCreatedAt ? new Date(completedAt).getTime() - new Date(runCreatedAt).getTime() : null,
     github_run_url: GITHUB_RUN_URL,
   });
 

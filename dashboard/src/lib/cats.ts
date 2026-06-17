@@ -2,6 +2,16 @@ import type { CatInfo } from '@/types'
 
 export const CATS: CatInfo[] = [
   {
+    id: 'CAT01', name: 'Signup', tag: 'signup',
+    description: 'New user registration (WIP)', active: false,
+    scenarios: [],
+  },
+  {
+    id: 'CAT02', name: 'Onboarding', tag: 'onboarding',
+    description: 'User onboarding flow (WIP)', active: false,
+    scenarios: [],
+  },
+  {
     id: 'CAT03', name: 'Login', tag: 'login',
     description: 'User authentication flows', active: true,
     scenarios: [
@@ -44,7 +54,7 @@ export const CATS: CatInfo[] = [
   },
   {
     id: 'CAT06', name: 'Knowledge Base', tag: 'knowledge-base',
-    description: 'KB creation and management', active: true,
+    description: 'KB creation and management', active: false,
     scenarios: [
       'KB001 - All integration buttons are visible in main toolbar and expanded menu',
       'KB002 - Every integration button opens the modal and shows a pending card',
@@ -263,6 +273,11 @@ export const CATS: CatInfo[] = [
     ],
   },
   {
+    id: 'CAT18', name: 'Income', tag: 'income',
+    description: 'Income tracking (WIP)', active: false,
+    scenarios: [],
+  },
+  {
     id: 'CAT19', name: 'Audience', tag: 'audience',
     description: 'Audience management', active: true,
     scenarios: [
@@ -323,20 +338,5 @@ export const CATS: CatInfo[] = [
       'HC003 - Each health check action button navigates to the correct destination',
       'HC004 - Progress bar correctly tracks health check item completion and removal',
     ],
-  },
-  {
-    id: 'CAT01', name: 'Signup', tag: 'signup',
-    description: 'New user registration (WIP)', active: false,
-    scenarios: [],
-  },
-  {
-    id: 'CAT02', name: 'Onboarding', tag: 'onboarding',
-    description: 'User onboarding flow (WIP)', active: false,
-    scenarios: [],
-  },
-  {
-    id: 'CAT18', name: 'Income', tag: 'income',
-    description: 'Income tracking (WIP)', active: false,
-    scenarios: [],
   },
 ]
