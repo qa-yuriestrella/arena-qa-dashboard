@@ -1,10 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import type { TestRun } from '@/types'
 import { StatusBadge } from './StatusBadge'
 import { ProgressRing } from './ProgressRing'
+import { formatDuration, runDurationMs } from '@/lib/utils'
+
+function LiveTimer({ startedAt }: { startedAt: string }) {
+  const [elapsed, setElapsed] = useState(() => Date.now() - new Date(startedAt).getTime())
+  useEffect(() => {
+    const id = setInterval(() => setElapsed(Date.now() - new Date(startedAt).getTime()), 1000)
+    return () => clearInterval(id)
+  }, [startedAt])
+  return <span className="text-xs text-brand-400 tabular-nums">{formatDuration(elapsed)}</span>
+}
 
 interface Props {
   runs: TestRun[]
@@ -25,6 +35,7 @@ export function RunHistoryPanel({ runs }: Props) {
               <th className="text-left px-4 py-3 text-xs text-white/40 font-medium">Tests</th>
               <th className="text-left px-4 py-3 text-xs text-white/40 font-medium">Status</th>
               <th className="text-left px-4 py-3 text-xs text-white/40 font-medium hidden sm:table-cell">By</th>
+              <th className="text-right px-4 py-3 text-xs text-white/40 font-medium hidden md:table-cell">Duration</th>
               <th className="text-right px-4 py-3 text-xs text-white/40 font-medium">Pass Rate</th>
               <th className="px-4 py-3"></th>
             </tr>
@@ -54,6 +65,12 @@ export function RunHistoryPanel({ runs }: Props) {
                   </td>
                   <td className="px-4 py-3 text-white/40 text-xs hidden sm:table-cell">
                     {run.triggered_by?.split('@')[0] || '—'}
+                  </td>
+                  <td className="px-4 py-3 text-right hidden md:table-cell">
+                    {run.status === 'running'
+                      ? <LiveTimer startedAt={run.created_at} />
+                      : (() => { const d = runDurationMs(run); return d != null ? <span className="text-xs text-white/35 tabular-nums">{formatDuration(d)}</span> : null })()
+                    }
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">

@@ -1,2 +1,2 @@
-﻿# @income
-# Feature: CAT18 - Income
+﻿@income
+Feature: CAT18 - Income

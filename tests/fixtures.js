@@ -1,4 +1,6 @@
 const playwrightBdd = require('playwright-bdd');
+const path = require('path');
+const fs   = require('fs');
 
 const MODERN_EU_URL = process.env.MODERN_EU_URL || 'https://dev-avatar.arena.im/automation2arena';
 const { SignupPage } = require('../support/Pages/SignupPage');
@@ -90,6 +92,51 @@ const test = playwrightBdd.test.extend({
   healthCheckPage: async ({ authenticatedPage }, use) => {
     await use(new HealthCheckPage(authenticatedPage));
   },
+  // ─── Social auth fixtures (storageState) ──────────────────────────────────
+  // Auth files are generated once via: node tests/setup/generate-social-auth.js <provider>
+  euGoogleModernPage: async ({ browser }, use) => {
+    const authFile = path.resolve(__dirname, '../.auth/google-eu-modern.json');
+    if (!fs.existsSync(authFile)) throw new Error('Missing .auth/google-eu-modern.json — run: node tests/setup/generate-social-auth.js google-modern');
+    const context = await browser.newContext({ storageState: authFile });
+    const page = await context.newPage();
+    await use(new EndUserPage(page, MODERN_EU_URL));
+    await context.close();
+  },
+  euGooglePage: async ({ browser }, use) => {
+    const authFile = path.resolve(__dirname, '../.auth/google-eu.json');
+    if (!fs.existsSync(authFile)) throw new Error('Missing .auth/google-eu.json — run: node tests/setup/generate-social-auth.js google');
+    const context = await browser.newContext({ storageState: authFile });
+    const page = await context.newPage();
+    await use(new EndUserPage(page));
+    await context.close();
+  },
+  euFacebookPage: async ({ browser }, use) => {
+    const authFile = path.resolve(__dirname, '../.auth/facebook-eu.json');
+    if (!fs.existsSync(authFile)) throw new Error('Missing .auth/facebook-eu.json — run: node tests/setup/generate-social-auth.js facebook');
+    const context = await browser.newContext({ storageState: authFile });
+    const page = await context.newPage();
+    await use(new EndUserPage(page));
+    await context.close();
+  },
+  euXPage: async ({ browser }, use) => {
+    const authFile = path.resolve(__dirname, '../.auth/x-eu.json');
+    if (!fs.existsSync(authFile)) throw new Error('Missing .auth/x-eu.json — run: node tests/setup/generate-social-auth.js x');
+    const context = await browser.newContext({ storageState: authFile });
+    const page = await context.newPage();
+    await use(new EndUserPage(page));
+    await context.close();
+  },
+  googleAdminPage: async ({ browser }, use) => {
+    const authFile = path.resolve(__dirname, '../.auth/google-admin.json');
+    if (!fs.existsSync(authFile)) throw new Error('Missing .auth/google-admin.json — run: node tests/setup/generate-social-auth.js admin');
+    const baseURL = process.env.BASE_URL || 'https://stg-dash-avatar.arena.im';
+    const context = await browser.newContext({ storageState: authFile, baseURL });
+    const page = await context.newPage();
+    await page.goto('/');
+    await use(new LoginPage(page));
+    await context.close();
+  },
+
   healthCheckFreshPage: async ({ browser }, use) => {
     const baseURL = process.env.BASE_URL || 'https://stg-dash-avatar.arena.im';
     const context = await browser.newContext({ baseURL });

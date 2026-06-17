@@ -368,7 +368,12 @@ class EndUserPage {
 
   async loginWithGoogle() {
     const popupPromise = this.page.waitForEvent('popup');
-    await this._authFrame().getByRole('menuitem', { name: /continue with google/i }).click();
+    if (this._isModernEU()) {
+      await this.page.getByRole('dialog', { name: /welcome back/i })
+        .getByRole('button', { name: /continue with google/i }).click();
+    } else {
+      await this._authFrame().getByRole('menuitem', { name: /continue with google/i }).click();
+    }
     const popup = await popupPromise;
     await completeGoogleOAuth(popup);
   }
