@@ -124,18 +124,35 @@ When('I click Sign In', async ({ endUserPage }) => {
   await endUserPage.clickSignIn();
 });
 
-// ─── Social login ─────────────────────────────────────────────────────────────
+// ─── Social login (storageState — requires .auth/*.json generated via generate-social-auth.js) ───
+// Each pair of Given + Then uses the same social fixture so they share the same browser context.
 
-When('I log in with Google in the end user', async ({ endUserPage }) => {
-  await endUserPage.loginWithGoogle();
+Given('I am on the end user page as a Google user', async ({ euGooglePage }) => {
+  await euGooglePage.visit();
+});
+Then('I should be logged in to the end user as a Google user', async ({ euGooglePage }) => {
+  await euGooglePage.shouldBeLoggedIn();
 });
 
-When('I log in with X in the end user', async ({ endUserPage }) => {
-  await endUserPage.loginWithX();
+Given('I am on the modern end user page as a Google user', async ({ euGoogleModernPage }) => {
+  await euGoogleModernPage.visit();
+});
+Then('I should be logged in to the modern end user as a Google user', async ({ euGoogleModernPage }) => {
+  await euGoogleModernPage.shouldBeLoggedIn();
 });
 
-When('I log in with Facebook in the end user', async ({ endUserPage }) => {
-  await endUserPage.loginWithFacebook();
+Given('I am on the end user page as an X user', async ({ euXPage }) => {
+  await euXPage.visit();
+});
+Then('I should be logged in to the end user as an X user', async ({ euXPage }) => {
+  await euXPage.shouldBeLoggedIn();
+});
+
+Given('I am on the end user page as a Facebook user', async ({ euFacebookPage }) => {
+  await euFacebookPage.visit();
+});
+Then('I should be logged in to the end user as a Facebook user', async ({ euFacebookPage }) => {
+  await euFacebookPage.shouldBeLoggedIn();
 });
 
 // ─── User Profile Management ──────────────────────────────────────────────────
