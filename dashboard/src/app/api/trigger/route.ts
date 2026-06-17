@@ -37,9 +37,14 @@ export async function POST(req: NextRequest) {
   // Find the GitHub run ID in the background so we can track/cancel it
   findNewWorkflowRun(triggeredAt).then(async (githubRunId) => {
     if (githubRunId) {
+      const owner = process.env.GITHUB_REPO_OWNER
+      const repo = process.env.GITHUB_REPO_NAME
+      const github_run_url = owner && repo
+        ? `https://github.com/${owner}/${repo}/actions/runs/${githubRunId}`
+        : null
       await supabase.from('test_runs').update({
         github_run_id: String(githubRunId),
-        github_run_url: `https://github.com/${process.env.GITHUB_REPO_OWNER}/${process.env.GITHUB_REPO_NAME}/actions/runs/${githubRunId}`,
+        ...(github_run_url && { github_run_url }),
       }).eq('id', run.id)
     }
   }).catch(() => {})
