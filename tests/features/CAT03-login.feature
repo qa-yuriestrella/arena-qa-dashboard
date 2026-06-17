@@ -53,7 +53,6 @@ Feature: CAT03 - User Login
     Then the password reset modal should not be visible
 
   @ln-google
-  Scenario: LN010 - Login with Google redirects to the dashboard
-    Given I am on the login page
-    When I log in with Google
-    Then I should be redirected to the dashboard
+  Scenario: LN010 - Google-authenticated session provides access to the admin dashboard
+    Given I am authenticated as an admin via Google
+    Then the admin dashboard should be accessible

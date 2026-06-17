@@ -62,23 +62,20 @@ Feature: CAT07 - End User Authentication
 
     # ─── Social login ────────────────────────────────────────────────────────────
 
-    @eu-social @skip
-    Scenario: EU005 - Login with Google logs into the end user
-      When I click the end user profile button
-      And I log in with Google in the end user
-      Then I should be logged in to the end user
+    @eu-social
+    Scenario: EU005 - Google-authenticated user is recognized by the end user widget
+      Given I am on the end user page as a Google user
+      Then I should be logged in to the end user as a Google user
 
     @eu-social @skip
-    Scenario: EU006 - Login with X via Google logs into the end user
-      When I click the end user profile button
-      And I log in with X in the end user
-      Then I should be logged in to the end user
+    Scenario: EU006 - X-authenticated user is recognized by the end user widget
+      Given I am on the end user page as an X user
+      Then I should be logged in to the end user as an X user
 
     @eu-social @skip
-    Scenario: EU007 - Login with Facebook logs into the end user
-      When I click the end user profile button
-      And I log in with Facebook in the end user
-      Then I should be logged in to the end user
+    Scenario: EU007 - Facebook-authenticated user is recognized by the end user widget
+      Given I am on the end user page as a Facebook user
+      Then I should be logged in to the end user as a Facebook user
 
     # ─── User Profile Management ─────────────────────────────────────────────────
 
@@ -141,6 +138,13 @@ Feature: CAT07 - End User Authentication
 
     Background:
       Given I am on the modern end user page
+
+    # ─── Social login ────────────────────────────────────────────────────────────
+
+    @eu-social @eu-modern-social
+    Scenario: EU005M - Google-authenticated user is recognized by the Modern end user widget
+      Given I am on the modern end user page as a Google user
+      Then I should be logged in to the modern end user as a Google user
 
     # ─── Entry points ───────────────────────────────────────────────────────────
 

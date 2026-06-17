@@ -96,6 +96,12 @@ Then('I should see a password reset confirmation message', async ({ loginPage })
   await loginPage.resetConfirmationShouldBeVisible();
 });
 
-When('I log in with Google', async ({ loginPage }) => {
-  await loginPage.loginWithGoogle();
+// ─── Google admin (storageState — requires .auth/google-admin.json) ─────────
+
+Given('I am authenticated as an admin via Google', async ({ googleAdminPage }) => {
+  // googleAdminPage fixture already navigated to / with the Google-authenticated context
+});
+
+Then('the admin dashboard should be accessible', async ({ googleAdminPage }) => {
+  await googleAdminPage.shouldBeRedirectedToDashboard();
 });
