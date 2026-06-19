@@ -134,6 +134,14 @@ export default function CatDetailPage() {
           scenarioGrep: pendingScenarioGrep,
         }),
       })
+      if (res.status === 409) {
+        const data = await res.json()
+        const who = data.blockedBy || 'someone'
+        const catsLabel = data.blockedByCats === 'all' ? 'All tests' : (data.blockedByCats || cat?.id || id)
+        const scenarioLabel = data.blockedByScenario ? ` · ${data.blockedByScenario.split(' - ')[0]}` : ''
+        setTriggerError(`${catsLabel}${scenarioLabel} is already running by ${who}`)
+        return
+      }
       if (!res.ok) {
         const data = await res.json()
         throw new Error(data.error || 'Failed to trigger run')
@@ -264,7 +272,13 @@ export default function CatDetailPage() {
                 {isRunning ? (
                   <>
                     <div className="flex items-center gap-3">
-                      <p className="text-sm font-medium text-white">Running tests on GitHub Actions...</p>
+                      <p className="text-sm font-medium text-white">
+                        Running
+                        {activeRun.scenario_grep && (
+                          <> <span className="font-mono text-brand-400">{activeRun.scenario_grep.split(' - ')[0]}</span></>
+                        )}
+                        {' '}on GitHub Actions...
+                      </p>
                       <span className="text-sm font-mono text-brand-400 tabular-nums">{formatDuration(elapsedMs)}</span>
                     </div>
                     {activeRun.current_scenario ? (
@@ -284,10 +298,14 @@ export default function CatDetailPage() {
                         activeRun.status === 'passed' ? 'text-emerald-400' :
                         activeRun.status === 'failed' ? 'text-red-400' : 'text-white/60'
                       }`}>
-                        {activeRun.status === 'passed' ? 'All scenarios passed' :
-                         activeRun.status === 'failed' ? `${activeRun.failed_tests} scenario${activeRun.failed_tests !== 1 ? 's' : ''} failed` :
-                         activeRun.status === 'error' ? 'Run error — check details' :
-                         'Run cancelled'}
+                        {activeRun.status === 'passed'
+                          ? (activeRun.scenario_grep
+                              ? `${activeRun.scenario_grep.split(' - ')[0]} passed`
+                              : 'All scenarios passed')
+                          : activeRun.status === 'failed'
+                            ? `${activeRun.failed_tests} scenario${activeRun.failed_tests !== 1 ? 's' : ''} failed`
+                            : activeRun.status === 'error' ? 'Run error — check details'
+                            : 'Run cancelled'}
                       </p>
                       {(() => { const d = runDurationMs(activeRun); return d != null ? <span className="text-xs text-white/35 tabular-nums">{formatDuration(d)}</span> : null })()}
                     </div>

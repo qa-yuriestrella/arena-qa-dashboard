@@ -50,6 +50,11 @@ export function RunHistoryPanel({ runs }: Props) {
                             <span key={cat} className="text-xs font-mono bg-white/5 text-white/60 px-1.5 py-0.5 rounded">{cat.trim()}</span>
                           ))
                       }
+                      {run.scenario_grep && (
+                        <span className="text-xs font-mono bg-white/5 text-white/30 px-1.5 py-0.5 rounded border border-white/5">
+                          {run.scenario_grep.split(' - ')[0]}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3">
