@@ -22,6 +22,7 @@ export default function DashboardPage() {
   const [triggering, setTriggering] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [blockedBy, setBlockedBy] = useState<string | null>(null)
 
   const fetchRuns = useCallback(async () => {
     const res = await fetch('/api/runs')
@@ -63,6 +64,7 @@ export default function DashboardPage() {
     setRunModalOpen(false)
     setTriggering(true)
     setError(null)
+    setBlockedBy(null)
     try {
       const res = await fetch('/api/trigger', {
         method: 'POST',
@@ -71,6 +73,11 @@ export default function DashboardPage() {
       })
       if (!res.ok) {
         const data = await res.json()
+        if (res.status === 409 && data.blockedBy) {
+          setBlockedBy(data.blockedBy)
+          await fetchRuns()
+          return
+        }
         throw new Error(data.error || 'Failed to trigger run')
       }
       await fetchRuns()
@@ -108,6 +115,8 @@ export default function DashboardPage() {
   const activeCats = CATS.filter(c => c.active)
   const inactiveCats = CATS.filter(c => !c.active)
   const isRunning = latestRun?.status === 'running'
+  const isMyRun = isRunning && latestRun?.triggered_by === session?.user?.email
+  const activeRunner = isRunning ? latestRun?.triggered_by : null
 
   const passRate = latestRun && latestRun.total_tests > 0
     ? Math.round((latestRun.passed_tests / latestRun.total_tests) * 100)
@@ -142,12 +151,13 @@ export default function DashboardPage() {
           <button
             onClick={() => openRunModal([])}
             disabled={triggering || isRunning}
+            title={!isMyRun && activeRunner ? `Tests locked by ${activeRunner}` : undefined}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-brand rounded-xl text-white text-sm font-semibold shadow-lg shadow-brand-600/30 hover:shadow-brand-600/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isRunning ? (
               <>
                 <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-                Running...
+                {isMyRun ? 'Running...' : 'Busy'}
               </>
             ) : (
               <>
@@ -231,6 +241,29 @@ export default function DashboardPage() {
         </motion.div>
       )}
 
+      {/* Banner: tests locked by another user (proactive, from polling) */}
+      {isRunning && !isMyRun && activeRunner && (
+        <div className="glass rounded-xl p-4 border border-amber-500/30 text-amber-300 text-sm flex items-center gap-3">
+          <LockIcon />
+          <span>
+            Tests are currently running by <span className="font-semibold">{activeRunner}</span>. New runs are blocked until this one finishes.
+          </span>
+        </div>
+      )}
+
+      {/* Banner: blocked by 409 (race condition — user clicked just before check ran) */}
+      {blockedBy && (
+        <div className="glass rounded-xl p-4 border border-amber-500/30 text-amber-300 text-sm flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <LockIcon />
+            <span>
+              Could not start: a run triggered by <span className="font-semibold">{blockedBy}</span> is already in progress.
+            </span>
+          </div>
+          <button onClick={() => setBlockedBy(null)} className="text-amber-300/60 hover:text-amber-300 text-lg leading-none">×</button>
+        </div>
+      )}
+
       {error && (
         <div className="glass rounded-xl p-4 border border-red-500/30 text-red-400 text-sm flex items-center justify-between gap-3">
           <span>{error}</span>
@@ -311,6 +344,14 @@ function StopIcon() {
   return (
     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
       <path d="M6 6h12v12H6z" />
+    </svg>
+  )
+}
+
+function LockIcon() {
+  return (
+    <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+      <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
     </svg>
   )
 }
