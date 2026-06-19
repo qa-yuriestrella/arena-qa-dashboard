@@ -3,6 +3,7 @@ export interface TestRun {
   created_at: string
   triggered_by: string | null
   cats: string
+  scenario_grep: string | null
   status: 'running' | 'passed' | 'failed' | 'error' | 'cancelled'
   github_run_id: string | null
   github_run_url: string | null

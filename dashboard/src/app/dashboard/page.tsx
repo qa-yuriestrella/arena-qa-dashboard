@@ -24,6 +24,8 @@ export default function DashboardPage() {
   const [cancelling, setCancelling] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [blockedBy, setBlockedBy] = useState<string | null>(null)
+  const [blockedByCats, setBlockedByCats] = useState<string | null>(null)
+  const [blockedByScenario, setBlockedByScenario] = useState<string | null>(null)
 
   const fetchRuns = useCallback(async () => {
     const res = await fetch('/api/runs')
@@ -66,6 +68,8 @@ export default function DashboardPage() {
     setTriggering(true)
     setError(null)
     setBlockedBy(null)
+    setBlockedByCats(null)
+    setBlockedByScenario(null)
     try {
       const res = await fetch('/api/trigger', {
         method: 'POST',
@@ -76,6 +80,8 @@ export default function DashboardPage() {
         const data = await res.json()
         if (res.status === 409 && data.blockedBy) {
           setBlockedBy(data.blockedBy)
+          setBlockedByCats(data.blockedByCats || null)
+          setBlockedByScenario(data.blockedByScenario || null)
           await fetchRuns()
           return
         }
@@ -188,7 +194,11 @@ export default function DashboardPage() {
                   <StatusBadge status={latestRun.status} />
                 </div>
                 <p className="text-sm text-white/60">
-                  {latestRun.cats === 'all' ? 'All tests' : latestRun.cats} ·{' '}
+                  {latestRun.cats === 'all' ? 'All tests' : latestRun.cats}
+                  {latestRun.scenario_grep && (
+                    <> · <span className="font-mono">{latestRun.scenario_grep.split(' - ')[0]}</span></>
+                  )}
+                  {' · '}
                   {new Date(latestRun.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}
                 </p>
                 {isRunning && (
@@ -252,21 +262,33 @@ export default function DashboardPage() {
         <div className="glass rounded-xl p-4 border border-amber-500/30 text-amber-300 text-sm flex items-center gap-3">
           <LockIcon />
           <span>
-            Tests are currently running by <span className="font-semibold">{activeRunner}</span>. New runs are blocked until this one finishes.
+            <span className="font-semibold">
+              {latestRun?.cats === 'all' ? 'All tests' : latestRun?.cats}
+              {latestRun?.scenario_grep && ` · ${latestRun.scenario_grep.split(' - ')[0]}`}
+            </span>
+            {' '}is running by <span className="font-semibold">{activeRunner}</span>. New runs are blocked until this one finishes.
           </span>
         </div>
       )}
 
-      {/* Banner: blocked by 409 (race condition — user clicked just before check ran) */}
+      {/* Banner: blocked by 409 */}
       {blockedBy && (
         <div className="glass rounded-xl p-4 border border-amber-500/30 text-amber-300 text-sm flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <LockIcon />
             <span>
-              Could not start: a run triggered by <span className="font-semibold">{blockedBy}</span> is already in progress.
+              Could not start:{' '}
+              <span className="font-semibold">
+                {blockedByCats === 'all' ? 'All tests' : (blockedByCats || 'a run')}
+                {blockedByScenario && ` · ${blockedByScenario.split(' - ')[0]}`}
+              </span>
+              {' '}is already running by <span className="font-semibold">{blockedBy}</span>.
             </span>
           </div>
-          <button onClick={() => setBlockedBy(null)} className="text-amber-300/60 hover:text-amber-300 text-lg leading-none">×</button>
+          <button
+            onClick={() => { setBlockedBy(null); setBlockedByCats(null); setBlockedByScenario(null) }}
+            className="text-amber-300/60 hover:text-amber-300 text-lg leading-none"
+          >×</button>
         </div>
       )}
 

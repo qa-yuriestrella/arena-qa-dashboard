@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
   const { data: activeRun } = await supabase
     .from('test_runs')
-    .select('id, triggered_by')
+    .select('id, triggered_by, cats, scenario_grep')
     .eq('status', 'running')
     .order('created_at', { ascending: false })
     .limit(1)
@@ -21,7 +21,12 @@ export async function POST(req: NextRequest) {
 
   if (activeRun) {
     return NextResponse.json(
-      { error: 'already_running', blockedBy: activeRun.triggered_by },
+      {
+        error: 'already_running',
+        blockedBy: activeRun.triggered_by,
+        blockedByCats: activeRun.cats,
+        blockedByScenario: activeRun.scenario_grep || null,
+      },
       { status: 409 }
     )
   }
@@ -32,6 +37,7 @@ export async function POST(req: NextRequest) {
       triggered_by: triggeredBy || session.user?.email,
       cats,
       status: 'running',
+      ...(scenarioGrep ? { scenario_grep: scenarioGrep } : {}),
     })
     .select()
     .single()
