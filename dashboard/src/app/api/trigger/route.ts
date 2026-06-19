@@ -11,6 +11,21 @@ export async function POST(req: NextRequest) {
   const { cats, triggeredBy, scenarioGrep } = await req.json()
   if (!cats) return NextResponse.json({ error: 'cats is required' }, { status: 400 })
 
+  const { data: activeRun } = await supabase
+    .from('test_runs')
+    .select('id, triggered_by')
+    .eq('status', 'running')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (activeRun) {
+    return NextResponse.json(
+      { error: 'already_running', blockedBy: activeRun.triggered_by },
+      { status: 409 }
+    )
+  }
+
   const { data: run, error } = await supabase
     .from('test_runs')
     .insert({
