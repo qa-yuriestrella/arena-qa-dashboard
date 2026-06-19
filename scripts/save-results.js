@@ -112,11 +112,19 @@ async function main() {
 
   if (!fs.existsSync(RESULTS_FILE)) {
     console.error('results.json not found at', RESULTS_FILE);
+    // If the run was already cancelled (e.g. stopped by the user mid-run), preserve that
+    // status instead of overwriting it with a misleading 'error'.
+    const runState = await supabaseFetch(`test_runs?id=eq.${RUN_ID}&select=status`).catch(() => []);
+    if (runState[0]?.status === 'cancelled') {
+      console.log('Run was cancelled — skipping error status update.');
+      process.exit(0);
+    }
     await supabaseFetch(`test_runs?id=eq.${RUN_ID}`, 'PATCH', {
       status: 'error',
       current_scenario: null,
       completed_at: new Date().toISOString(),
       failure_reason: 'Test results file not found — tests may not have run. Check the GitHub Actions log.',
+      ...(GITHUB_RUN_URL && { github_run_url: GITHUB_RUN_URL }),
     });
     process.exit(0);
   }
@@ -214,6 +222,7 @@ main().catch(async (err) => {
         status: 'error',
         completed_at: new Date().toISOString(),
         failure_reason: `save-results.js crashed: ${err.message}`,
+        ...(GITHUB_RUN_URL && { github_run_url: GITHUB_RUN_URL }),
       });
     } catch {}
   }

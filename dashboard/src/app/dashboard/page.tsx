@@ -134,7 +134,7 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {isRunning && (
+          {isRunning && isMyRun && (
             <button
               onClick={cancelRun}
               disabled={cancelling}

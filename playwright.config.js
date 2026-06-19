@@ -17,6 +17,9 @@ const testDir = defineBddConfig({
   features: 'tests/features/**/*.feature',
   // Onde ficam os step definitions
   steps: ['tests/step_definitions/**/*.steps.js', 'tests/fixtures.js'],
+  // Exclude features tagged @wip — they have no step implementations yet.
+  // Add @wip to the Feature header of any inactive/in-progress feature file.
+  tags: 'not @wip',
 });
 
 module.exports = defineConfig({

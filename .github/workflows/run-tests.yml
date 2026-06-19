@@ -64,12 +64,19 @@ jobs:
         if: steps.bdd-cache.outputs.cache-hit != 'true'
         run: yarn bddgen
 
+      - name: List generated BDD spec files
+        run: find .features-gen -name "*.spec.js" | sort || echo "WARNING: .features-gen is empty or missing"
+
       - name: Restore social auth files
+        env:
+          AUTH_GOOGLE_EU: ${{ secrets.AUTH_GOOGLE_EU }}
+          AUTH_GOOGLE_EU_MODERN: ${{ secrets.AUTH_GOOGLE_EU_MODERN }}
+          AUTH_GOOGLE_ADMIN: ${{ secrets.AUTH_GOOGLE_ADMIN }}
         run: |
           mkdir -p .auth
-          echo "${{ secrets.AUTH_GOOGLE_EU }}" | tr -d '[:space:]' | base64 -d > .auth/google-eu.json
-          echo "${{ secrets.AUTH_GOOGLE_EU_MODERN }}" | tr -d '[:space:]' | base64 -d > .auth/google-eu-modern.json
-          echo "${{ secrets.AUTH_GOOGLE_ADMIN }}" | tr -d '[:space:]' | base64 -d > .auth/google-admin.json
+          python3 -c "import base64,os; open('.auth/google-eu.json','wb').write(base64.b64decode(os.environ['AUTH_GOOGLE_EU'].strip()))"
+          python3 -c "import base64,os; open('.auth/google-eu-modern.json','wb').write(base64.b64decode(os.environ['AUTH_GOOGLE_EU_MODERN'].strip()))"
+          python3 -c "import base64,os; open('.auth/google-admin.json','wb').write(base64.b64decode(os.environ['AUTH_GOOGLE_ADMIN'].strip()))"
 
       - name: Run tests
         id: run_tests
@@ -105,8 +112,10 @@ jobs:
               fi
             done
             if [ -z "$FILES" ]; then
-              echo "No matching spec files found for: $CATS"
-              exit 0
+              echo "ERROR: No matching spec files found for: $CATS"
+              echo "Available spec files:"
+              find .features-gen -name "*.spec.js" | sort || echo "  (none)"
+              exit 1
             fi
           fi
 
