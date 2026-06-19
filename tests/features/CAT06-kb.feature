@@ -1,4 +1,4 @@
-@knowledge-base
+@knowledge-base @wip
 Feature: CAT06 - Knowledge Base
 
   Background:

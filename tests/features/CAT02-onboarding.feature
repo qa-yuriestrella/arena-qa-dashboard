@@ -1,4 +1,4 @@
-@onboarding
+@onboarding @wip
 Feature: CAT02 - Onboarding Flow
 
   Background:

@@ -62,7 +62,6 @@ jobs:
 
       - name: Generate BDD test files
         if: steps.bdd-cache.outputs.cache-hit != 'true'
-        continue-on-error: true
         run: yarn bddgen
 
       - name: List generated BDD spec files
