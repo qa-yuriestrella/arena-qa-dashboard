@@ -4,6 +4,7 @@ import Link from 'next/link'
 import type { TestRun, TestResult } from '@/types'
 import { StatusBadge } from './StatusBadge'
 import { ProgressRing } from './ProgressRing'
+import { LiveTimer } from './LiveTimer'
 import { CATS } from '@/lib/cats'
 import { formatDuration, runDurationMs } from '@/lib/utils'
 
@@ -54,7 +55,10 @@ export function RunDetail({ run, results, onRerun }: Props) {
               </div>
               <p className="text-white font-semibold">{run.cats === 'all' ? 'Full Test Run' : run.cats}</p>
               <p className="text-xs text-white/40">{new Date(run.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}</p>
-              {(() => { const d = runDurationMs(run); return d != null ? <p className="text-xs text-white/30 mt-0.5">Duration: {formatDuration(d)}</p> : null })()}
+              {run.status === 'running'
+                ? <p className="text-xs text-brand-400 mt-0.5 tabular-nums">Running for <LiveTimer startedAt={run.created_at} /></p>
+                : (() => { const d = runDurationMs(run); return d != null ? <p className="text-xs text-white/30 mt-0.5">Duration: {formatDuration(d)}</p> : null })()
+              }
               {run.status === 'error' && run.failure_reason && (
                 <p className="text-xs text-red-400/70 mt-1 max-w-sm">{run.failure_reason}</p>
               )}

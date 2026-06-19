@@ -1,20 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import type { TestRun } from '@/types'
 import { StatusBadge } from './StatusBadge'
 import { ProgressRing } from './ProgressRing'
+import { LiveTimer } from './LiveTimer'
 import { formatDuration, runDurationMs } from '@/lib/utils'
-
-function LiveTimer({ startedAt }: { startedAt: string }) {
-  const [elapsed, setElapsed] = useState(() => Date.now() - new Date(startedAt).getTime())
-  useEffect(() => {
-    const id = setInterval(() => setElapsed(Date.now() - new Date(startedAt).getTime()), 1000)
-    return () => clearInterval(id)
-  }, [startedAt])
-  return <span className="text-xs text-brand-400 tabular-nums">{formatDuration(elapsed)}</span>
-}
 
 interface Props {
   runs: TestRun[]
