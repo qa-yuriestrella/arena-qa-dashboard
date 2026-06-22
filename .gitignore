@@ -5,8 +5,8 @@ test-results/
 .claude/
 
 # Dashboard
+.env.local
 dashboard/.next/
-dashboard/.env.local
 dashboard/node_modules/
 
 # Screenshots exploratórios
